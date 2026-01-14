@@ -170,152 +170,190 @@ def fetch_data_from_api(skip=0, top=1000):
 
 
 def process_company(cursor, record):
-    """Обработать одну запись и вставить в БД"""
-    cells = record.get("Cells", {})
-
-    # Извлечение данных
-    global_id = cells.get("global_id")
-    object_name_on_doc = normalize_text(cells.get("ObjectNameOnDoc"))
-    object_name = normalize_text(cells.get("ObjectName", ""))
-    address = normalize_text(cells.get("Address", ""))
-
-    # Административное деление
-    adm_area_name = normalize_text(cells.get("AdmArea"))
-    district_name = normalize_text(cells.get("District"))
-
-    # Информация о лицензиате
-    subject_name = normalize_text(cells.get("SubjectName"))
-    legal_address = normalize_text(cells.get("LegalAddress"))
-    email = normalize_text(cells.get("Email"))
-    inn = normalize_text(cells.get("INN"))
-    kpp = normalize_text(cells.get("KPP"))
-    kpp_separate = normalize_text(cells.get("KPPSeparateDivision"))
-
-    # Информация о лицензии
-    job_type_code = normalize_text(cells.get("JobType"))
-    license_number = normalize_text(cells.get("LicenseNumber"))
-    license_number_registry = normalize_text(cells.get("LicenseNumberInRegistry"))
-    license_begin = parse_date(cells.get("LicenseBegin"))
-    license_expire = parse_date(cells.get("LicenseExpire"))
-    install_date = parse_date(cells.get("InstallDateOfCurrentLicenseState"))
-    date_of_decision = parse_date(cells.get("DateOfDecision"))
-    license_status = normalize_text(cells.get("CurrentLicenseState"))
-    licensing_authority = normalize_text(cells.get("NameOfLicensingAuthority"))
-
-    # Дополнительная информация
-    n_fias = normalize_text(cells.get("N_FIAS"))
-    cadastral_number = normalize_text(cells.get("CadastralNumber"))
-
-    # Геоданные
-    geo_data = cells.get("geoData")
-    geo_data_center = cells.get("geodata_center")
-
-    # Извлечение координат (приоритет geoData, потом geodata_center)
-    longitude, latitude = extract_coordinates(geo_data) or extract_coordinates(
-        geo_data_center
-    )
-
-    # Нормализация данных
-    adm_area_id = (
-        get_or_create_adm_area(cursor, adm_area_name) if adm_area_name else None
-    )
-    district_id = (
-        get_or_create_district(cursor, adm_area_id, district_name)
-        if district_name
-        else None
-    )
-    license_type_id = (
-        get_or_create_license_type(cursor, job_type_code) if job_type_code else None
-    )
-    license_status_id = (
-        get_or_create_license_status(cursor, license_status) if license_status else None
-    )
-
-    # Подготовка JSON для геоданных
-    geo_data_json = json.dumps(geo_data) if geo_data else None
-    geo_data_center_json = json.dumps(geo_data_center) if geo_data_center else None
-
-    # Вставка или обновление записи
-    sql = """
-    INSERT INTO companies (
-        global_id, dataset_row_id, object_name_on_doc, object_name, address,
-        adm_area_id, district_id, subject_name, legal_address, email,
-        inn, kpp, kpp_separate_division, license_type_id, license_number,
-        license_number_in_registry, license_begin, license_expire,
-        install_date_of_current_state, date_of_decision, license_status_id,
-        licensing_authority, n_fias, cadastral_number,
-        longitude, latitude, geo_data_json, geo_data_center_json
-    ) VALUES (
-        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-        %s, %s, %s, %s, %s, %s, %s, %s
-    )
-    ON DUPLICATE KEY UPDATE
-        object_name_on_doc = VALUES(object_name_on_doc),
-        object_name = VALUES(object_name),
-        address = VALUES(address),
-        adm_area_id = VALUES(adm_area_id),
-        district_id = VALUES(district_id),
-        subject_name = VALUES(subject_name),
-        legal_address = VALUES(legal_address),
-        email = VALUES(email),
-        inn = VALUES(inn),
-        kpp = VALUES(kpp),
-        kpp_separate_division = VALUES(kpp_separate_division),
-        license_type_id = VALUES(license_type_id),
-        license_number = VALUES(license_number),
-        license_number_in_registry = VALUES(license_number_in_registry),
-        license_begin = VALUES(license_begin),
-        license_expire = VALUES(license_expire),
-        install_date_of_current_state = VALUES(install_date_of_current_state),
-        date_of_decision = VALUES(date_of_decision),
-        license_status_id = VALUES(license_status_id),
-        licensing_authority = VALUES(licensing_authority),
-        n_fias = VALUES(n_fias),
-        cadastral_number = VALUES(cadastral_number),
-        longitude = VALUES(longitude),
-        latitude = VALUES(latitude),
-        geo_data_json = VALUES(geo_data_json),
-        geo_data_center_json = VALUES(geo_data_center_json),
-        updated_at = CURRENT_TIMESTAMP
-    """
-
-    values = (
-        global_id,
-        record.get("global_id"),
-        object_name_on_doc,
-        object_name,
-        address,
-        adm_area_id,
-        district_id,
-        subject_name,
-        legal_address,
-        email,
-        inn,
-        kpp,
-        kpp_separate,
-        license_type_id,
-        license_number,
-        license_number_registry,
-        license_begin,
-        license_expire,
-        install_date,
-        date_of_decision,
-        license_status_id,
-        licensing_authority,
-        n_fias,
-        cadastral_number,
-        longitude,
-        latitude,
-        geo_data_json,
-        geo_data_center_json,
-    )
-
+    """Обработка одной записи компании с фильтрацией актуальных версий"""
     try:
+        cells = record.get("Cells", {})
+
+        # Основные поля
+        global_id = record.get("global_id")
+        dataset_row_id = record.get("dataset_row_id")
+        object_name_on_doc = normalize_text(cells.get("ObjectNameOnDoc"))
+        object_name = normalize_text(cells.get("ObjectName"))
+        address = normalize_text(cells.get("Address"))
+        adm_area_name = normalize_text(cells.get("AdmArea"))
+        district_name = normalize_text(cells.get("District"))
+        subject_name = normalize_text(cells.get("SubjectName"))
+        legal_address = normalize_text(cells.get("LegalAddress"))
+        email = normalize_text(cells.get("Email"))
+        inn = normalize_text(cells.get("INN"))
+        kpp = normalize_text(cells.get("KPP"))
+        kpp_separate = normalize_text(cells.get("KPPSeparateDivision"))
+
+        # Лицензия
+        job_type_code = normalize_text(cells.get("JobTypeCode"))
+        license_number = normalize_text(cells.get("LicenseNumber"))
+        license_number_registry = normalize_text(cells.get("LicenseNumberInRegistry"))
+        license_begin = parse_date(cells.get("LicenseBegin"))
+        license_expire = parse_date(cells.get("LicenseExpire"))
+        install_date = parse_date(cells.get("InstallDateOfCurrentLicenseState"))
+        date_of_decision = parse_date(cells.get("DateOfDecision"))
+        license_status = normalize_text(cells.get("CurrentLicenseState"))
+        licensing_authority = normalize_text(cells.get("NameOfLicensingAuthority"))
+
+        # Дополнительная информация
+        n_fias = normalize_text(cells.get("N_FIAS"))
+        cadastral_number = normalize_text(cells.get("CadastralNumber"))
+
+        # Геоданные
+        geo_data = cells.get("geoData")
+        geo_data_center = cells.get("geodata_center")
+
+        # Извлечение координат (приоритет geoData, потом geodata_center)
+        longitude, latitude = extract_coordinates(geo_data) or extract_coordinates(
+            geo_data_center
+        )
+
+        # ПРОВЕРКА: Пропускаем записи без координат
+        if not longitude or not latitude:
+            return False
+
+        # ПРОВЕРКА: Фильтрация актуальных записей по ИНН или адресу
+        if inn and inn.strip():
+            # Проверяем, есть ли уже более свежая запись для этого ИНН
+            cursor.execute("""
+                SELECT COUNT(*) as count 
+                FROM companies 
+                WHERE inn = %s 
+                AND (
+                    install_date_of_current_state > %s 
+                    OR (install_date_of_current_state = %s AND license_expire > %s)
+                )
+            """, (inn, install_date or '1900-01-01', install_date or '1900-01-01', license_expire or '1900-01-01'))
+            
+            result = cursor.fetchone()
+            if result and result['count'] > 0:
+                # Есть более свежая запись, пропускаем эту
+                return False
+        else:
+            # Если нет ИНН, группируем по адресу
+            if address and address.strip():
+                cursor.execute("""
+                    SELECT COUNT(*) as count 
+                    FROM companies 
+                    WHERE inn IS NULL OR inn = '' 
+                    AND address = %s 
+                    AND (
+                        install_date_of_current_state > %s 
+                        OR (install_date_of_current_state = %s AND license_expire > %s)
+                    )
+                """, (address, install_date or '1900-01-01', install_date or '1900-01-01', license_expire or '1900-01-01'))
+                
+                result = cursor.fetchone()
+                if result and result['count'] > 0:
+                    # Есть более свежая запись, пропускаем эту
+                    return False
+
+        # Нормализация данных
+        adm_area_id = (
+            get_or_create_adm_area(cursor, adm_area_name) if adm_area_name else None
+        )
+        district_id = (
+            get_or_create_district(cursor, adm_area_id, district_name)
+            if district_name
+            else None
+        )
+        license_type_id = (
+            get_or_create_license_type(cursor, job_type_code) if job_type_code else None
+        )
+        license_status_id = (
+            get_or_create_license_status(cursor, license_status) if license_status else None
+        )
+
+        # Подготовка JSON для геоданных
+        geo_data_json = json.dumps(geo_data) if geo_data else None
+        geo_data_center_json = json.dumps(geo_data_center) if geo_data_center else None
+
+        # Вставка или обновление записи
+        sql = """
+        INSERT INTO companies (
+            global_id, dataset_row_id, object_name_on_doc, object_name, address,
+            adm_area_id, district_id, subject_name, legal_address, email,
+            inn, kpp, kpp_separate_division, license_type_id, license_number,
+            license_number_in_registry, license_begin, license_expire,
+            install_date_of_current_state, date_of_decision, license_status_id,
+            licensing_authority, n_fias, cadastral_number,
+            longitude, latitude, geo_data_json, geo_data_center_json
+        ) VALUES (
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+            %s, %s, %s, %s, %s, %s, %s, %s
+        )
+        ON DUPLICATE KEY UPDATE
+            object_name_on_doc = VALUES(object_name_on_doc),
+            object_name = VALUES(object_name),
+            address = VALUES(address),
+            adm_area_id = VALUES(adm_area_id),
+            district_id = VALUES(district_id),
+            subject_name = VALUES(subject_name),
+            legal_address = VALUES(legal_address),
+            email = VALUES(email),
+            inn = VALUES(inn),
+            kpp = VALUES(kpp),
+            kpp_separate_division = VALUES(kpp_separate_division),
+            license_type_id = VALUES(license_type_id),
+            license_number = VALUES(license_number),
+            license_number_in_registry = VALUES(license_number_in_registry),
+            license_begin = VALUES(license_begin),
+            license_expire = VALUES(license_expire),
+            install_date_of_current_state = VALUES(install_date_of_current_state),
+            date_of_decision = VALUES(date_of_decision),
+            license_status_id = VALUES(license_status_id),
+            licensing_authority = VALUES(licensing_authority),
+            n_fias = VALUES(n_fias),
+            cadastral_number = VALUES(cadastral_number),
+            longitude = VALUES(longitude),
+            latitude = VALUES(latitude),
+            geo_data_json = VALUES(geo_data_json),
+            geo_data_center_json = VALUES(geo_data_center_json),
+            updated_at = CURRENT_TIMESTAMP
+        """
+
+        values = (
+            global_id,
+            record.get("global_id"),
+            object_name_on_doc,
+            object_name,
+            address,
+            adm_area_id,
+            district_id,
+            subject_name,
+            legal_address,
+            email,
+            inn,
+            kpp,
+            kpp_separate,
+            license_type_id,
+            license_number,
+            license_number_registry,
+            license_begin,
+            license_expire,
+            install_date,
+            date_of_decision,
+            license_status_id,
+            licensing_authority,
+            n_fias,
+            cadastral_number,
+            longitude,
+            latitude,
+            geo_data_json,
+            geo_data_center_json,
+        )
+
         cursor.execute(sql, values)
         return True
-    except Error as e:
-        print(f"Ошибка вставки записи global_id={global_id}: {e}")
+
+    except Exception as e:
+        print(f"   ⚠ Ошибка при обработке записи: {e}")
         return False
 
 
