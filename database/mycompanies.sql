@@ -1,17 +1,3 @@
--- ============================================================
--- SQL СКРИПТ ДЛЯ ВЫПОЛНЕНИЯ В MYSQL КОНСОЛИ PYTHONANYWHERE
--- ============================================================
--- ИНСТРУКЦИЯ:
--- 1. Откройте MySQL консоль в PythonAnywhere (Databases → кликните на вашу БД)
--- 2. Скопируйте весь этот скрипт
--- 3. Вставьте в консоль
--- 4. Нажмите Enter
--- ============================================================
-
--- ============================================================
--- ТАБЛИЦЫ ДЛЯ НОРМАЛИЗАЦИИ
--- ============================================================
-
 -- Таблица административных округов
 CREATE TABLE IF NOT EXISTS adm_areas (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -57,10 +43,8 @@ CREATE TABLE IF NOT EXISTS license_statuses (
     INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ============================================================
--- ОСНОВНАЯ ТАБЛИЦА ПРЕДПРИЯТИЙ
--- ============================================================
 
+-- Основная таблица предприятий
 CREATE TABLE IF NOT EXISTS companies (
     id INT AUTO_INCREMENT PRIMARY KEY,
     global_id BIGINT UNIQUE COMMENT 'Глобальный идентификатор из датасета',
@@ -116,10 +100,6 @@ CREATE TABLE IF NOT EXISTS companies (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Основная таблица предприятий с алкогольными лицензиями';
 
--- ============================================================
--- ВСПОМОГАТЕЛЬНЫЕ ТАБЛИЦЫ
--- ============================================================
-
 -- Таблица для кэширования результатов кластеризации
 CREATE TABLE IF NOT EXISTS clusters_cache (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -151,10 +131,8 @@ CREATE TABLE IF NOT EXISTS license_history (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='История изменений статусов лицензий';
 
--- ============================================================
--- ПРЕДСТАВЛЕНИЕ (VIEW) для удобных запросов
--- ============================================================
 
+-- ПРЕДСТАВЛЕНИЕ 
 CREATE OR REPLACE VIEW companies_full AS
 SELECT 
     c.id,
@@ -189,17 +167,3 @@ LEFT JOIN adm_areas aa ON c.adm_area_id = aa.id
 LEFT JOIN districts d ON c.district_id = d.id
 LEFT JOIN license_types lt ON c.license_type_id = lt.id
 LEFT JOIN license_statuses ls ON c.license_status_id = ls.id;
-
--- ============================================================
--- ПРОВЕРКА СОЗДАНИЯ ТАБЛИЦ
--- ============================================================
-
--- Выполните эту команду после создания таблиц для проверки:
--- SHOW TABLES;
-
--- Проверка структуры таблицы companies:
--- DESCRIBE companies;
-
--- Проверка данных в license_types:
--- SELECT * FROM license_types;
-

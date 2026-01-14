@@ -1,10 +1,3 @@
-"""
-Локальный скрипт для загрузки данных из API портала Москвы
-в базу данных MySQL (XAMPP / phpMyAdmin).
-
-Запускать на СВОЁМ компьютере (VS Code, cmd, PowerShell), не на PythonAnywhere.
-"""
-
 import requests
 import json
 import mysql.connector
@@ -12,26 +5,19 @@ from mysql.connector import Error
 from datetime import datetime
 import time
 
-# Конфигурация API
+
 API_BASE_URL = "https://apidata.mos.ru/v1"
 DATASET_ID = 586
-API_KEY = "8b66460e-5b86-4ffe-9d2e-6b4664b60e15"  # Ваш API-ключ
-BATCH_SIZE = 1000  # Максимальное количество записей за запрос
+API_KEY = "8b66460e-5b86-4ffe-9d2e-6b4664b60e15"  
+BATCH_SIZE = 1000 
 
 
-# Настройки локальной БД (XAMPP)
-# По умолчанию в XAMPP:
-#   host: localhost
-#   user: root
-#   password: ""  (пустой)
-#   port: 3306
-# Базу данных romanlin$default нужно создать в phpMyAdmin заранее.
 DB_CONFIG = {
     "host": "localhost",
     "port": 3306,
-    "database": "romanlin$default",  # или измените, если у БД другое имя
+    "database": "romanlin$default",  
     "user": "root",
-    "password": "",  # если вы зададите пароль root, укажите его здесь
+    "password": "", 
     "charset": "utf8mb4",
     "collation": "utf8mb4_unicode_ci",
 }
@@ -120,7 +106,6 @@ def normalize_text(value):
     чтобы избежать ошибки "Python 'list' cannot be converted to a MySQL type".
     """
     if isinstance(value, (list, tuple, set)):
-        # Склеиваем элементы через запятую
         return ", ".join(map(str, value))
     return value
 
@@ -169,7 +154,7 @@ def fetch_data_from_api(skip=0, top=1000):
     try:
         response = session.get(
             url,
-            timeout=60,  # увеличенный таймаут
+            timeout=60,  
             verify=False,
             proxies={"http": None, "https": None},
         )
@@ -182,127 +167,6 @@ def fetch_data_from_api(skip=0, top=1000):
     except Exception as e:
         print(f"Ошибка запроса к API: {e}")
         return None
-
-
-def is_latest_record(record, all_records_by_company):
-    """
-    Проверить, является ли запись актуальной для данного предприятия.
-    Актуальность определяется по:
-    1. Дате установки текущего состояния лицензии (самая свежая)
-    2. Дате окончания лицензии (самая поздняя)
-    3. ID записи (самый большой при равенстве дат)
-    
-    Args:
-        record: текущая запись
-        all_records_by_company: все записи этого предприятия
-    
-    Returns:
-        bool: True если запись актуальная
-    """
-    cells = record.get("Cells", {})
-    
-    # Получаем ключевые поля для сравнения
-    install_date = parse_date(cells.get("InstallDateOfCurrentLicenseState"))
-    license_expire = parse_date(cells.get("LicenseExpire"))
-    record_id = record.get("global_id")
-    
-    # Ищем самую свежую запись среди всех записей этого предприятия
-    for other_record in all_records_by_company:
-        other_cells = other_record.get("Cells", {})
-        other_install_date = parse_date(other_cells.get("InstallDateOfCurrentLicenseState"))
-        other_license_expire = parse_date(other_cells.get("LicenseExpire"))
-        other_id = other_record.get("global_id")
-        
-        # Сравниваем по приоритету:
-        # 1. Дата установки состояния (более свежая = лучше)
-        if other_install_date and install_date:
-            if other_install_date > install_date:
-                return False  # Нашлась более свежая запись
-            elif other_install_date < install_date:
-                continue  # Наша запись свежее
-        
-        # 2. Дата окончания лицензии (более поздняя = лучше)
-        if other_license_expire and license_expire:
-            if other_license_expire > license_expire:
-                return False  # Нашлась запись с более поздним сроком
-            elif other_license_expire < license_expire:
-                continue  # Наша запись с более поздним сроком
-        
-        # 3. ID записи (больше = лучше, т.к. обычно присваивается позже)
-        if other_id > record_id:
-            return False  # Нашлась запись с большим ID
-    
-    return True  # Наша запись самая актуальная
-
-
-def group_records_by_company(records):
-    """
-    Сгруппировать записи по предприятиям.
-    Группировка выполняется по:
-    1. ИНН (если есть)
-    2. Адресу (если ИНН нет)
-    
-    Args:
-        records: список всех записей
-    
-    Returns:
-        dict: {company_key: [records]}
-    """
-    grouped = {}
-    
-    for record in records:
-        cells = record.get("Cells", {})
-        inn = normalize_text(cells.get("INN"))
-        address = normalize_text(cells.get("Address"))
-        
-        # Определяем ключ группировки
-        if inn and inn.strip():
-            company_key = f"INN_{inn}"
-        elif address and address.strip():
-            company_key = f"ADDR_{address}"
-        else:
-            company_key = f"ID_{record.get('global_id')}"
-        
-        if company_key not in grouped:
-            grouped[company_key] = []
-        grouped[company_key].append(record)
-    
-    return grouped
-
-
-def filter_latest_records(all_records):
-    """
-    Отфильтровать только актуальные записи из всех загруженных данных.
-    
-    Args:
-        all_records: список всех записей из API
-    
-    Returns:
-        list: список только актуальных записей
-    """
-    print("\n3. Фильтрация актуальных записей...")
-    
-    # Группируем записи по предприятиям
-    grouped = group_records_by_company(all_records)
-    print(f"   Найдено предприятий: {len(grouped)}")
-    
-    # Отбираем только актуальные записи
-    latest_records = []
-    total_processed = 0
-    
-    for company_key, company_records in grouped.items():
-        # Находим актуальную запись для этого предприятия
-        for record in company_records:
-            if is_latest_record(record, company_records):
-                latest_records.append(record)
-                break  # Берем только одну актуальную запись на предприятие
-        
-        total_processed += len(company_records)
-        if len(grouped) % 1000 == 0:  # Прогресс для больших датасетов
-            print(f"   Обработано {len(latest_records)} предприятий из {len(grouped)}...")
-    
-    print(f"   ✓ Отфильтровано актуальных записей: {len(latest_records)} из {total_processed}")
-    return latest_records
 
 
 def process_company(cursor, record):
@@ -456,9 +320,9 @@ def process_company(cursor, record):
 
 
 def load_all_data():
-    """Загрузить и отфильтровать данные из API в БД"""
+    """Загрузить все данные из API в БД"""
     print("=" * 60)
-    print("ЗАГРУЗКА И ФИЛЬТРАЦИЯ ДАННЫХ ИЗ API В БАЗУ ДАННЫХ (ЛОКАЛЬНО)")
+    print("ЗАГРУЗКА ДАННЫХ ИЗ API В БАЗУ ДАННЫХ (ЛОКАЛЬНО)")
     print("=" * 60)
 
     # Подключение к БД
@@ -491,14 +355,15 @@ def load_all_data():
         print(f"   ⚠ Ошибка: {e}")
         total_count = None
 
-    # Сначала загружаем все данные в память
-    print("\n2. Загрузка всех данных из API...")
+    # Загрузка данных по частям
+    print("\n2. Загрузка данных...")
     skip = 0
-    all_records = []
+    loaded = 0
+    errors = 0
     start_time = time.time()
 
     while True:
-        print(f"   Загрузка записей {skip} - {skip + BATCH_SIZE}...")
+        print(f"\n   Загрузка записей {skip} - {skip + BATCH_SIZE}...")
 
         # Получить данные из API
         data = fetch_data_from_api(skip, BATCH_SIZE)
@@ -507,8 +372,19 @@ def load_all_data():
             print("   Нет данных, завершение загрузки.")
             break
 
-        all_records.extend(data)
-        print(f"   ✓ Загружено: {len(data)} записей (всего: {len(all_records)})")
+        # Обработать каждую запись
+        batch_loaded = 0
+        for record in data:
+            if process_company(cursor, record):
+                batch_loaded += 1
+                loaded += 1
+            else:
+                errors += 1
+
+        # Коммит батча
+        connection.commit()
+
+        print(f"   ✓ Загружено: {batch_loaded} записей (всего: {loaded})")
 
         # Если получили меньше записей, чем запрашивали - это последний батч
         if len(data) < BATCH_SIZE:
@@ -518,44 +394,19 @@ def load_all_data():
         skip += BATCH_SIZE
         time.sleep(0.3)  # небольшая пауза, чтобы не спамить API
 
-    print(f"\n   ✓ Всего загружено записей: {len(all_records)}")
-    
-    # Фильтруем актуальные записи
-    latest_records = filter_latest_records(all_records)
-    
-    # Теперь загружаем только актуальные записи в БД
-    print("\n4. Загрузка отфильтрованных записей в БД...")
-    loaded = 0
-    errors = 0
-
-    for record in latest_records:
-        if process_company(cursor, record):
-            loaded += 1
-        else:
-            errors += 1
-
-        # Коммит каждые 100 записей
-        if loaded % 100 == 0:
-            connection.commit()
-            print(f"   Загружено: {loaded} записей...")
-
-    # Финальный коммит
-    connection.commit()
     elapsed_time = time.time() - start_time
 
     # Итоговая статистика
     print("\n" + "=" * 60)
     print("ЗАГРУЗКА ЗАВЕРШЕНА")
     print("=" * 60)
-    print(f"Всего записей в датасете: {len(all_records)}")
-    print(f"Отфильтровано актуальных записей: {len(latest_records)}")
-    print(f"Загружено в БД: {loaded}")
+    print(f"Загружено записей: {loaded}")
     print(f"Ошибок: {errors}")
     print(f"Время выполнения: {elapsed_time:.2f} секунд")
-    
+
     if total_count:
         print(f"Ожидалось записей: {total_count}")
-        if len(all_records) < total_count:
+        if loaded < total_count:
             print("⚠ Загружено меньше, чем ожидалось. Возможно, некоторые записи пропущены.")
 
     cursor.close()
@@ -565,5 +416,3 @@ def load_all_data():
 
 if __name__ == "__main__":
     load_all_data()
-
-
