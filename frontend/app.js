@@ -18,6 +18,49 @@ function initMap() {
   }).addTo(map);
 
   markersLayer = L.layerGroup().addTo(map);
+  
+  // Добавляем индикатор масштаба
+  L.control.scale({
+    position: 'bottomleft',
+    metric: true,
+    imperial: false,
+    updateWhenIdle: true
+  }).addTo(map);
+  
+  // Добавляем индикатор масштаба в левый верхний угол
+  const scaleIndicator = document.createElement('div');
+  scaleIndicator.style.cssText = `
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 8px 12px;
+    z-index: 1000;
+    font-size: 12px;
+    font-weight: 500;
+  `;
+  scaleIndicator.id = 'scaleIndicator';
+  document.body.appendChild(scaleIndicator);
+  
+  // Обновляем индикатор при изменении масштаба
+  map.on('zoomend', function() {
+    const zoom = map.getZoom();
+    let meters = '';
+    
+    if (zoom <= 8) meters = '~1000 м';
+    else if (zoom <= 10) meters = '~500 м';
+    else if (zoom <= 12) meters = '~200 м';
+    else if (zoom <= 14) meters = '~100 м';
+    else if (zoom <= 16) meters = '~50 м';
+    else meters = '~10 м';
+    
+    scaleIndicator.innerHTML = `Масштаб: ${zoom} | ${meters}`;
+  });
+  
+  // Инициализация
+  scaleIndicator.innerHTML = 'Масштаб: 10 | ~500 м';
 }
 
 // ============================================
@@ -229,6 +272,38 @@ async function loadCompanies() {
 // ============================================
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 // ============================================
+function showNotification(message) {
+  // Создаем уведомление
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #4CAF50;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    z-index: 10000;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    animation: slideIn 0.3s ease-out;
+  `;
+  notification.textContent = message;
+  
+  document.body.appendChild(notification);
+  
+  // Автоматически удаляем через 3 секунды
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease-out';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, 3000);
+}
+
 function getColorByStatusColor(statusColor) {
   if (statusColor === "expired") return "#ef4444";
   if (statusColor === "expiring_soon") return "#f59e0b";
