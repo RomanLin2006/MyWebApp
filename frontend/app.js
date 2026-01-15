@@ -6,6 +6,10 @@ let map = null;
 let markersLayer = null;
 let allCompaniesData = [];
 
+// Глобальные переменные для хранения состояния
+let originalMarkersData = [];
+let isSimilarMode = false;
+
 // ============================================
 // ИНИЦИАЛИЗАЦИЯ КАРТЫ
 // ============================================
@@ -57,11 +61,28 @@ function initMap() {
     else meters = '~10 м';
     
     scaleIndicator.innerHTML = `Масштаб: ${zoom} | ${meters}`;
+    
+    // Обновляем данные только если не в режиме похожих
+    if (!isSimilarMode) {
+      loadCompanies();
+    }
+  });
+  
+  // Добавляем обработчики для динамической загрузки
+  map.on('moveend', function() {
+    // Обновляем данные только если не в режиме похожих
+    if (!isSimilarMode) {
+      clearTimeout(window.mapMoveTimeout);
+      window.mapMoveTimeout = setTimeout(() => {
+        loadCompanies();
+      }, 500); // 500ms debounce
+    }
   });
   
   // Инициализация
   scaleIndicator.innerHTML = 'Масштаб: 10 | ~500 м';
 }
+
 
 // ============================================
 // УПРАВЛЕНИЕ ПАНЕЛЬЮ ФИЛЬТРОВ
@@ -139,10 +160,32 @@ async function loadFilterOptions() {
 // ЗАГРУЗКА КОМПАНИЙ
 // ============================================
 async function loadCompanies() {
+  // Не загружаем данные если в режиме похожих
+  if (isSimilarMode) {
+    return;
+  }
+  
   const params = new URLSearchParams();
-  params.set("limit", "1000");
+  
+  // Определяем текущий масштаб и границы
+  const zoom = map.getZoom();
+  const bounds = map.getBounds();
+  
+  // Логика загрузки в зависимости от масштаба
+  if (zoom >= 16) {
+    // Детальный масштаб (16+) - загружаем все в видимой области
+    params.set("load_all", "true");
+    params.set("bounds", `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`);
+    params.set("zoom_level", zoom);
+  } else if (zoom >= 12) {
+    // Средний масштаб (12-15) - ограничение 1000 точек
+    params.set("limit", "1000");
+  } else {
+    // Общий масштаб (11 и меньше) - ограничение 500 точек
+    params.set("limit", "500");
+  }
 
-  // Собираем фильтры
+  // Собираем фильтры (работают при любом масштабе)
   const statusColor = document.getElementById("statusFilter").value;
   if (statusColor) params.set("status_color", statusColor);
 
@@ -220,6 +263,9 @@ async function loadCompanies() {
       marker.bindPopup(popupHtml, {
         className: "custom-popup",
         maxWidth: 420,
+        autoClose: false,
+        closeOnClick: false,
+        closeOnEscapeKey: false
       });
 
       // Сохраняем данные компании в маркере
@@ -261,8 +307,17 @@ async function loadCompanies() {
       count++;
     });
 
-    // Обновляем счётчик точек
-    document.getElementById("pointsCount").textContent = `${count} точек`;
+    // Обновляем счётчик точек с информацией о режиме загрузки
+    let countText = `${count} точек`;
+    if (zoom >= 16) {
+      countText += ` (все в области)`;
+    } else if (zoom >= 12) {
+      countText += ` (лимит 1000)`;
+    } else {
+      countText += ` (лимит 500)`;
+    }
+    document.getElementById("pointsCount").textContent = countText;
+    
   } catch (e) {
     console.error(e);
     alert("Ошибка при загрузке данных с backend. Проверь, что Flask запущен.");
@@ -332,6 +387,15 @@ function getHoverStroke(statusColor) {
 // ФУНКЦИИ АНАЛИЗА
 // ============================================
 function findSimilarCompanies(lat, lon, licenseType, excludeInn) {
+  // Сохраняем текущие маркеры если еще не в режиме похожих
+  if (!isSimilarMode) {
+    originalMarkersData = [];
+    markersLayer.eachLayer(marker => {
+      originalMarkersData.push(marker);
+    });
+    isSimilarMode = true;
+  }
+  
   // Находим похожие предприятия в радиусе 1000м
   const similar = allCompaniesData.filter(company => {
     if (company.latitude == null || company.longitude == null) return false;
@@ -347,7 +411,7 @@ function findSimilarCompanies(lat, lon, licenseType, excludeInn) {
     return distance <= 1000; // 1000 метров
   });
 
-  // Показываем только похожие предприятия на карте
+  // Очищаем карту и показываем только похожие предприятия
   markersLayer.clearLayers();
   
   similar.forEach((c) => {
@@ -383,6 +447,9 @@ function findSimilarCompanies(lat, lon, licenseType, excludeInn) {
     marker.bindPopup(popupHtml, {
       className: "custom-popup",
       maxWidth: 420,
+      autoClose: false,
+      closeOnClick: false,
+      closeOnEscapeKey: false
     });
 
     marker.addTo(markersLayer);
@@ -404,6 +471,17 @@ function clearFilters() {
   document.getElementById("admAreaFilter").value = "";
   document.getElementById("districtFilter").value = "";
   document.getElementById("licenseTypeFilter").value = "";
+  
+  // Возвращаем исходные маркеры если был режим похожих
+  if (isSimilarMode) {
+    markersLayer.clearLayers();
+    originalMarkersData.forEach(marker => {
+      markersLayer.addLayer(marker);
+    });
+    originalMarkersData = [];
+    isSimilarMode = false;
+  }
+  
   loadCompanies();
 }
 

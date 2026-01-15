@@ -231,6 +231,9 @@ def create_app():
         Получить список компаний с фильтрацией.
         Фильтры (query parameters):
         - limit: количество записей (макс. 1000)
+        - load_all: true/false - загружать все в bounds без лимита
+        - bounds: "south,west,north,east" - границы видимой области
+        - zoom_level: текущий масштаб
         - status_color: active | expiring_soon | expired
         - adm_area: название административного округа
         - district: название района
@@ -238,6 +241,9 @@ def create_app():
         - search: поиск по названию, адресу, ИНН, КПП
         """
         limit = min(int(request.args.get("limit", 200)), 1000)
+        load_all = request.args.get("load_all", "false").lower() == "true"
+        bounds = request.args.get("bounds")
+        zoom_level = request.args.get("zoom_level")
         status_color = request.args.get("status_color")
         adm_area = request.args.get("adm_area")
         district = request.args.get("district")
@@ -288,6 +294,18 @@ def create_app():
             conditions = []
             params = []
             
+            # Добавляем фильтрацию по bounds если load_all=true
+            if load_all and bounds:
+                try:
+                    south, west, north, east = map(float, bounds.split(','))
+                    conditions.append("""
+                        c.latitude BETWEEN %s AND %s
+                        AND c.longitude BETWEEN %s AND %s
+                    """)
+                    params.extend([south, north, west, east])
+                except (ValueError, IndexError):
+                    print(f"Неверный формат bounds: {bounds}")
+            
             if status_color:
                 conditions.append("""
                     CASE 
@@ -326,8 +344,12 @@ def create_app():
                 base_sql += " AND " + " AND ".join(conditions)
             
             # Сортировка и лимит
-            base_sql += " ORDER BY c.id LIMIT %s"
-            params.append(limit)
+            base_sql += " ORDER BY c.id"
+            
+            # Добавляем лимит только если не load_all
+            if not load_all:
+                base_sql += " LIMIT %s"
+                params.append(limit)
             
             cursor.execute(base_sql, params)
             rows = cursor.fetchall()
