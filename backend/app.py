@@ -10,6 +10,15 @@ import time
 import threading
 import random
 
+# Импорт модуля аутентификации
+try:
+    from auth import AuthManager
+    AUTH_AVAILABLE = True
+except ImportError as e:
+    AUTH_AVAILABLE = False
+    print(f"Модуль аутентификации недоступен: {e}")
+    logging.warning(f"Функции аутентификации отключены: {e}")
+
 # Импорт модуля обновления данных
 try:
     from load_data_local import load_all_data
@@ -65,6 +74,17 @@ def create_app():
         "collation": "utf8mb4_unicode_ci",
         "connection_timeout": 5,  # Таймаут подключения 5 секунд
     }
+
+    # Инициализация менеджера аутентификации
+    auth_manager = None
+    if AUTH_AVAILABLE:
+        try:
+            auth_manager = AuthManager(app.config["DB_CONFIG"])
+            app.config["AUTH_MANAGER"] = auth_manager
+            print("Менеджер аутентификации успешно инициализирован")
+        except Exception as e:
+            print(f"Ошибка инициализации аутентификации: {e}")
+            app.config["AUTH_MANAGER"] = None
 
     def get_db_connection():
         try:
@@ -462,6 +482,161 @@ def create_app():
                 "status": "error",
                 "message": f"Ошибка при обновлении данных: {str(e)}"
             }), 500
+
+    # Эндпоинты аутентификации
+    @app.route("/api/auth/register", methods=["POST"])
+    def register():
+        """Регистрация нового пользователя"""
+        if not app.config.get("AUTH_MANAGER"):
+            return jsonify({"success": False, "message": "Сервис аутентификации недоступен"}), 503
+        
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"success": False, "message": "Отсутствуют данные"}), 400
+            
+            email = data.get('email', '').strip()
+            password = data.get('password', '')
+            first_name = data.get('first_name', '').strip()
+            last_name = data.get('last_name', '').strip()
+            phone = data.get('phone', '').strip()
+            privacy_policy_accepted = bool(data.get('privacy_policy_accepted', False))
+            data_processing_consent = bool(data.get('data_processing_consent', False))
+            
+            # Получение IP и User-Agent
+            ip_address = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
+            user_agent = request.headers.get('User-Agent', '')
+            
+            result = app.config["AUTH_MANAGER"].register_user(
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                phone=phone,
+                privacy_policy_accepted=privacy_policy_accepted,
+                data_processing_consent=data_processing_consent,
+                ip_address=ip_address,
+                user_agent=user_agent
+            )
+            
+            if result["success"]:
+                return jsonify(result), 201
+            else:
+                return jsonify(result), 400
+                
+        except Exception as e:
+            print(f"Ошибка в эндпоинте регистрации: {e}")
+            return jsonify({"success": False, "message": "Внутренняя ошибка сервера"}), 500
+
+    @app.route("/api/auth/login", methods=["POST"])
+    def login():
+        """Вход пользователя"""
+        if not app.config.get("AUTH_MANAGER"):
+            return jsonify({"success": False, "message": "Сервис аутентификации недоступен"}), 503
+        
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"success": False, "message": "Отсутствуют данные"}), 400
+            
+            email = data.get('email', '').strip()
+            password = data.get('password', '')
+            
+            # Получение IP и User-Agent
+            ip_address = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
+            user_agent = request.headers.get('User-Agent', '')
+            
+            result = app.config["AUTH_MANAGER"].login_user(
+                email=email,
+                password=password,
+                ip_address=ip_address,
+                user_agent=user_agent
+            )
+            
+            if result["success"]:
+                return jsonify(result), 200
+            else:
+                return jsonify(result), 401
+                
+        except Exception as e:
+            print(f"Ошибка в эндпоинте входа: {e}")
+            return jsonify({"success": False, "message": "Внутренняя ошибка сервера"}), 500
+
+    @app.route("/api/auth/validate", methods=["POST"])
+    def validate_session():
+        """Валидация сессии"""
+        if not app.config.get("AUTH_MANAGER"):
+            return jsonify({"valid": False, "message": "Сервис аутентификации недоступен"}), 503
+        
+        try:
+            data = request.get_json()
+            if not data or not data.get('session_token'):
+                return jsonify({"valid": False, "message": "Отсутствует токен сессии"}), 400
+            
+            session_token = data.get('session_token')
+            result = app.config["AUTH_MANAGER"].validate_session(session_token)
+            
+            if result["valid"]:
+                return jsonify(result), 200
+            else:
+                return jsonify(result), 401
+                
+        except Exception as e:
+            print(f"Ошибка в эндпоинте валидации: {e}")
+            return jsonify({"valid": False, "message": "Внутренняя ошибка сервера"}), 500
+
+    @app.route("/api/auth/logout", methods=["POST"])
+    def logout():
+        """Выход пользователя"""
+        if not app.config.get("AUTH_MANAGER"):
+            return jsonify({"success": False, "message": "Сервис аутентификации недоступен"}), 503
+        
+        try:
+            data = request.get_json()
+            if not data or not data.get('session_token'):
+                return jsonify({"success": False, "message": "Отсутствует токен сессии"}), 400
+            
+            session_token = data.get('session_token')
+            ip_address = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
+            
+            result = app.config["AUTH_MANAGER"].logout_user(
+                session_token=session_token,
+                ip_address=ip_address
+            )
+            
+            if result["success"]:
+                return jsonify(result), 200
+            else:
+                return jsonify(result), 400
+                
+        except Exception as e:
+            print(f"Ошибка в эндпоинте выхода: {e}")
+            return jsonify({"success": False, "message": "Внутренняя ошибка сервера"}), 500
+
+    @app.route("/api/auth/user", methods=["GET"])
+    def get_user_info():
+        """Получение информации о пользователе по токену"""
+        if not app.config.get("AUTH_MANAGER"):
+            return jsonify({"error": "Сервис аутентификации недоступен"}), 503
+        
+        try:
+            session_token = request.headers.get('Authorization', '').replace('Bearer ', '')
+            if not session_token:
+                return jsonify({"error": "Отсутствует токен авторизации"}), 401
+            
+            result = app.config["AUTH_MANAGER"].validate_session(session_token)
+            
+            if result["valid"]:
+                return jsonify({
+                    "success": True,
+                    "user": result["user"]
+                }), 200
+            else:
+                return jsonify({"error": "Недействительная сессия"}), 401
+                
+        except Exception as e:
+            print(f"Ошибка в эндпоинте получения пользователя: {e}")
+            return jsonify({"error": "Внутренняя ошибка сервера"}), 500
 
     return app
 
