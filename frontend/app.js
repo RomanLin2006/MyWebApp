@@ -811,6 +811,11 @@ function showOnMap(lat, lon) {
     
     if (Math.abs(markerLat - lat) < 0.0001 && Math.abs(markerLon - lon) < 0.0001) {
       marker.openPopup();
+      
+      // Обновляем состояние кнопки избранного для этого маркера
+      if (marker._companyData && marker._companyData.id) {
+        updateFavoriteButtonsState();
+      }
     }
   });
 }
@@ -831,7 +836,31 @@ async function removeFromFavorites(companyId) {
       showNotification('Предприятие удалено из избранного', 'success');
       updateFavoriteButton(companyId, false);
       updateFavoritesCount();
-      showFavorites(); // Обновляем список
+      
+      // Обновляем список избранных с безопасной обработкой модальных окон
+      const modalElement = document.getElementById('favoritesModal');
+      const modalInstance = bootstrap.Modal.getInstance(modalElement);
+      
+      if (modalInstance) {
+        // Удаляем старый инстанс модального окна
+        modalInstance.dispose();
+        
+        // Удаляем backdrop если он остался
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) {
+          backdrop.remove();
+        }
+        
+        // Восстанавливаем классы body
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // Заново открываем модальное окно с обновленными данными
+        setTimeout(() => {
+          showFavorites();
+        }, 100);
+      }
     } else {
       showNotification('Ошибка при удалении из избранного', 'error');
     }
