@@ -34,6 +34,10 @@
         <!-- Информация о пользователе (скрыта по умолчанию) -->
         <div class="user-info" id="userInfo" style="display: none;">
           <div class="user-details">
+            <button class="btn btn-outline-light btn-sm me-2" id="favoritesBtn">
+              <i class="bi bi-star"></i> Избранное
+              <span class="badge bg-warning text-dark ms-1" id="favoritesCount" style="display: none;">0</span>
+            </button>
             <span class="user-name" id="userName">Пользователь</span>
             <button class="btn btn-outline-light btn-sm ms-2" id="logoutBtn">
               <i class="bi bi-box-arrow-right"></i> Выход
@@ -277,6 +281,30 @@
             <div class="text-center mt-3">
               <span>Уже есть аккаунт? </span>
               <a href="#" class="text-decoration-none" id="showLoginFromRegister">Войти</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модальное окно избранных предприятий -->
+    <div class="modal fade" id="favoritesModal" tabindex="-1" aria-labelledby="favoritesModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="favoritesModalLabel">
+              <i class="bi bi-star"></i> Мои избранные предприятия
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+          </div>
+          <div class="modal-body">
+            <div id="favoritesContent">
+              <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Загрузка...</span>
+                </div>
+                <p class="mt-2">Загрузка избранных предприятий...</p>
+              </div>
             </div>
           </div>
         </div>

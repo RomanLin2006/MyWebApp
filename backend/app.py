@@ -67,7 +67,7 @@ def create_app():
     app.config["DB_CONFIG"] = {
         "host": "127.0.0.1",  # Используем IP вместо localhost для избежания проблем с IPv6
         "port": 3306,
-        "database": "romanlin$default",  # если имя БД другое — поменяй здесь
+        "database": "romanlin$default",  # Рабочая база данных
         "user": "root",
         "password": "",
         "charset": "utf8mb4",
@@ -482,6 +482,247 @@ def create_app():
                 "status": "error",
                 "message": f"Ошибка при обновлении данных: {str(e)}"
             }), 500
+
+    # Эндпоинты для управления избранными предприятиями
+    @app.route("/api/favorites", methods=["GET"])
+    def get_favorites():
+        """Получить список избранных предприятий текущего пользователя"""
+        if not app.config.get("AUTH_MANAGER"):
+            return jsonify({"error": "Сервис аутентификации недоступен"}), 503
+        
+        try:
+            session_token = request.headers.get('Authorization', '').replace('Bearer ', '')
+            if not session_token:
+                return jsonify({"error": "Отсутствует токен авторизации"}), 401
+            
+            # Валидация сессии
+            auth_result = app.config["AUTH_MANAGER"].validate_session(session_token)
+            if not auth_result["valid"]:
+                return jsonify({"error": "Недействительная сессия"}), 401
+            
+            user_id = auth_result["user"]["id"]
+            conn = get_db_connection()
+            if not conn:
+                return jsonify({"error": "Ошибка подключения к базе данных"}), 500
+            
+            cursor = conn.cursor(dictionary=True)
+            
+            # Получаем избранные предприятия с полной информацией
+            query = """
+            SELECT 
+                uf.id as favorite_id,
+                uf.company_id,
+                uf.company_name,
+                uf.company_address,
+                uf.added_at,
+                c.object_name,
+                c.address,
+                c.longitude,
+                c.latitude,
+                c.license_number,
+                c.license_expire,
+                lt.code as license_type_code,
+                lt.name as license_type_name,
+                ls.status as license_status,
+                aa.name as adm_area,
+                d.name as district,
+                DATEDIFF(c.license_expire, CURDATE()) as days_until_expire,
+                CASE 
+                    WHEN c.license_expire < CURDATE() THEN 'expired'
+                    WHEN DATEDIFF(c.license_expire, CURDATE()) <= 30 THEN 'expiring_soon'
+                    ELSE 'active'
+                END as license_status_color
+            FROM user_favorites uf
+            LEFT JOIN companies c ON uf.company_id = c.id
+            LEFT JOIN license_types lt ON c.license_type_id = lt.id
+            LEFT JOIN license_statuses ls ON c.license_status_id = ls.id
+            LEFT JOIN adm_areas aa ON c.adm_area_id = aa.id
+            LEFT JOIN districts d ON c.district_id = d.id
+            WHERE uf.user_id = %s
+            ORDER BY uf.added_at DESC
+            """
+            
+            cursor.execute(query, (user_id,))
+            favorites = cursor.fetchall()
+            
+            cursor.close()
+            conn.close()
+            
+            return jsonify({
+                "success": True,
+                "favorites": favorites
+            }), 200
+            
+        except Exception as e:
+            print(f"Ошибка при получении избранных: {e}")
+            return jsonify({"error": "Внутренняя ошибка сервера"}), 500
+
+    @app.route("/api/favorites", methods=["POST"])
+    def add_favorite():
+        """Добавить предприятие в избранное"""
+        if not app.config.get("AUTH_MANAGER"):
+            return jsonify({"error": "Сервис аутентификации недоступен"}), 503
+        
+        try:
+            session_token = request.headers.get('Authorization', '').replace('Bearer ', '')
+            if not session_token:
+                return jsonify({"error": "Отсутствует токен авторизации"}), 401
+            
+            # Валидация сессии
+            auth_result = app.config["AUTH_MANAGER"].validate_session(session_token)
+            if not auth_result["valid"]:
+                return jsonify({"error": "Недействительная сессия"}), 401
+            
+            user_id = auth_result["user"]["id"]
+            data = request.get_json()
+            
+            if not data or "company_id" not in data:
+                return jsonify({"error": "Отсутствует ID предприятия"}), 400
+            
+            company_id = data["company_id"]
+            
+            conn = get_db_connection()
+            if not conn:
+                return jsonify({"error": "Ошибка подключения к базе данных"}), 500
+            
+            cursor = conn.cursor(dictionary=True)
+            
+            # Проверяем существование предприятия
+            cursor.execute("SELECT id, object_name, address FROM companies WHERE id = %s", (company_id,))
+            company = cursor.fetchone()
+            
+            if not company:
+                cursor.close()
+                conn.close()
+                return jsonify({"error": "Предприятие не найдено"}), 404
+            
+            # Проверяем, не добавлено ли уже в избранное
+            cursor.execute(
+                "SELECT id FROM user_favorites WHERE user_id = %s AND company_id = %s",
+                (user_id, company_id)
+            )
+            existing = cursor.fetchone()
+            
+            if existing:
+                cursor.close()
+                conn.close()
+                return jsonify({"error": "Предприятие уже в избранном"}), 409
+            
+            # Добавляем в избранное
+            insert_query = """
+            INSERT INTO user_favorites (user_id, company_id, company_name, company_address)
+            VALUES (%s, %s, %s, %s)
+            """
+            cursor.execute(insert_query, (
+                user_id, 
+                company_id, 
+                company["object_name"], 
+                company["address"]
+            ))
+            
+            conn.commit()
+            favorite_id = cursor.lastrowid
+            
+            cursor.close()
+            conn.close()
+            
+            return jsonify({
+                "success": True,
+                "message": "Предприятие добавлено в избранное",
+                "favorite_id": favorite_id
+            }), 201
+            
+        except Exception as e:
+            print(f"Ошибка при добавлении в избранное: {e}")
+            return jsonify({"error": "Внутренняя ошибка сервера"}), 500
+
+    @app.route("/api/favorites/<int:company_id>", methods=["DELETE"])
+    def remove_favorite(company_id):
+        """Удалить предприятие из избранного"""
+        if not app.config.get("AUTH_MANAGER"):
+            return jsonify({"error": "Сервис аутентификации недоступен"}), 503
+        
+        try:
+            session_token = request.headers.get('Authorization', '').replace('Bearer ', '')
+            if not session_token:
+                return jsonify({"error": "Отсутствует токен авторизации"}), 401
+            
+            # Валидация сессии
+            auth_result = app.config["AUTH_MANAGER"].validate_session(session_token)
+            if not auth_result["valid"]:
+                return jsonify({"error": "Недействительная сессия"}), 401
+            
+            user_id = auth_result["user"]["id"]
+            
+            conn = get_db_connection()
+            if not conn:
+                return jsonify({"error": "Ошибка подключения к базе данных"}), 500
+            
+            cursor = conn.cursor()
+            
+            # Удаляем из избранного
+            delete_query = "DELETE FROM user_favorites WHERE user_id = %s AND company_id = %s"
+            cursor.execute(delete_query, (user_id, company_id))
+            
+            affected_rows = cursor.rowcount
+            conn.commit()
+            
+            cursor.close()
+            conn.close()
+            
+            if affected_rows > 0:
+                return jsonify({
+                    "success": True,
+                    "message": "Предприятие удалено из избранного"
+                }), 200
+            else:
+                return jsonify({"error": "Предприятие не найдено в избранном"}), 404
+            
+        except Exception as e:
+            print(f"Ошибка при удалении из избранного: {e}")
+            return jsonify({"error": "Внутренняя ошибка сервера"}), 500
+
+    @app.route("/api/favorites/check/<int:company_id>", methods=["GET"])
+    def check_favorite(company_id):
+        """Проверить, находится ли предприятие в избранном"""
+        if not app.config.get("AUTH_MANAGER"):
+            return jsonify({"error": "Сервис аутентификации недоступен"}), 503
+        
+        try:
+            session_token = request.headers.get('Authorization', '').replace('Bearer ', '')
+            if not session_token:
+                return jsonify({"is_favorite": False, "error": "Не авторизован"}), 401
+            
+            # Валидация сессии
+            auth_result = app.config["AUTH_MANAGER"].validate_session(session_token)
+            if not auth_result["valid"]:
+                return jsonify({"is_favorite": False, "error": "Недействительная сессия"}), 401
+            
+            user_id = auth_result["user"]["id"]
+            
+            conn = get_db_connection()
+            if not conn:
+                return jsonify({"error": "Ошибка подключения к базе данных"}), 500
+            
+            cursor = conn.cursor()
+            
+            # Проверяем наличие в избранном
+            cursor.execute(
+                "SELECT id FROM user_favorites WHERE user_id = %s AND company_id = %s",
+                (user_id, company_id)
+            )
+            favorite = cursor.fetchone()
+            
+            cursor.close()
+            conn.close()
+            
+            return jsonify({
+                "is_favorite": favorite is not None
+            }), 200
+            
+        except Exception as e:
+            print(f"Ошибка при проверке избранного: {e}")
+            return jsonify({"error": "Внутренняя ошибка сервера"}), 500
 
     # Эндпоинты аутентификации
     @app.route("/api/auth/register", methods=["POST"])

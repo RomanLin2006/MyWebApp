@@ -253,6 +253,10 @@ async function loadCompanies() {
           </div>
           <hr/>
           <div class="popup-actions">
+            <button class="btn-sm btn-warning" id="favoriteBtn-${c.id}" onclick="toggleFavorite(${c.id})">
+              <i class="bi bi-star" id="favoriteIcon-${c.id}"></i> 
+              <span id="favoriteText-${c.id}">Добавить в избранное</span>
+            </button>
             <button class="btn-sm btn-primary" onclick="findSimilarCompanies(${c.latitude}, ${c.longitude}, '${c.license_type_code}', '${c.inn || ''}')">
               🔍 Поиск похожих (1000м)
             </button>
@@ -302,7 +306,6 @@ async function loadCompanies() {
       marker.on("click", function (e) {
         marker.openPopup();
       });
-
       marker.addTo(markersLayer);
       count++;
     });
@@ -310,13 +313,16 @@ async function loadCompanies() {
     // Обновляем счётчик точек с информацией о режиме загрузки
     let countText = `${count} точек`;
     if (zoom >= 16) {
-      countText += ` (все в области)`;
+      countText += " (все в области)";
     } else if (zoom >= 12) {
-      countText += ` (лимит 1000)`;
+      countText += " (лимит 1000)";
     } else {
-      countText += ` (лимит 500)`;
+      countText += " (лимит 500)";
     }
     document.getElementById("pointsCount").textContent = countText;
+    
+    // Обновляем состояние кнопок избранного для загруженных компаний
+    updateFavoriteButtonsState();
     
   } catch (e) {
     console.error(e);
@@ -327,14 +333,21 @@ async function loadCompanies() {
 // ============================================
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 // ============================================
-function showNotification(message) {
+function showNotification(message, type = 'success') {
   // Создаем уведомление
   const notification = document.createElement('div');
+  const colors = {
+    success: '#4CAF50',
+    error: '#f44336',
+    warning: '#ff9800',
+    info: '#2196F3'
+  };
+  
   notification.style.cssText = `
     position: fixed;
     top: 20px;
     right: 20px;
-    background: #4CAF50;
+    background: ${colors[type] || colors.success};
     color: white;
     padding: 12px 20px;
     border-radius: 4px;
@@ -515,4 +528,315 @@ document.addEventListener("DOMContentLoaded", function () {
       loadCompanies();
     }, 500);
   });
+  
+  // Обработчик для кнопки избранного
+  const favoritesBtn = document.getElementById('favoritesBtn');
+  if (favoritesBtn) {
+    favoritesBtn.addEventListener('click', showFavorites);
+  }
+  
+  // Обновляем счетчик избранных при загрузке
+  updateFavoritesCount();
 });
+
+// ============================================
+// ФУНКЦИИ РАБОТЫ С ИЗБРАННЫМИ
+// ============================================
+async function toggleFavorite(companyId) {
+  const token = localStorage.getItem('sessionToken');
+  if (!token) {
+    showNotification('Для добавления в избранное необходимо войти в систему', 'warning');
+    return;
+  }
+
+  try {
+    // Проверяем текущее состояние
+    const checkResponse = await fetch(`${API_BASE}/api/favorites/check/${companyId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const checkData = await checkResponse.json();
+    
+    if (checkData.is_favorite) {
+      // Удаляем из избранного
+      const deleteResponse = await fetch(`${API_BASE}/api/favorites/${companyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (deleteResponse.ok) {
+        updateFavoriteButton(companyId, false);
+        showNotification('Предприятие удалено из избранного', 'success');
+        updateFavoritesCount();
+      } else {
+        showNotification('Ошибка при удалении из избранного', 'error');
+      }
+    } else {
+      // Добавляем в избранное
+      const addResponse = await fetch(`${API_BASE}/api/favorites`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          company_id: companyId
+        })
+      });
+      
+      if (addResponse.ok) {
+        updateFavoriteButton(companyId, true);
+        showNotification('Предприятие добавлено в избранное', 'success');
+        updateFavoritesCount();
+      } else {
+        const errorData = await addResponse.json();
+        showNotification(errorData.error || 'Ошибка при добавлении в избранное', 'error');
+      }
+    }
+  } catch (error) {
+    console.error('Ошибка при работе с избранными:', error);
+    showNotification('Ошибка при работе с избранными', 'error');
+  }
+}
+
+function updateFavoriteButton(companyId, isFavorite) {
+  const btn = document.getElementById(`favoriteBtn-${companyId}`);
+  const icon = document.getElementById(`favoriteIcon-${companyId}`);
+  const text = document.getElementById(`favoriteText-${companyId}`);
+  
+  if (!btn || !icon || !text) return;
+  
+  if (isFavorite) {
+    btn.className = 'btn-sm btn-danger';
+    icon.className = 'bi bi-star-fill';
+    text.textContent = 'Удалить из избранного';
+  } else {
+    btn.className = 'btn-sm btn-warning';
+    icon.className = 'bi bi-star';
+    text.textContent = 'Добавить в избранное';
+  }
+}
+
+async function updateFavoritesCount() {
+  const token = localStorage.getItem('sessionToken');
+  if (!token) {
+    document.getElementById('favoritesCount').style.display = 'none';
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/favorites`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      const count = data.favorites ? data.favorites.length : 0;
+      const countElement = document.getElementById('favoritesCount');
+      
+      if (count > 0) {
+        countElement.textContent = count;
+        countElement.style.display = 'inline-block';
+      } else {
+        countElement.style.display = 'none';
+      }
+    }
+  } catch (error) {
+    console.error('Ошибка при обновлении счетчика избранных:', error);
+  }
+}
+
+async function updateFavoriteButtonsState() {
+  const token = localStorage.getItem('sessionToken');
+  if (!token) return;
+
+  try {
+    // Получаем список избранных
+    const response = await fetch(`${API_BASE}/api/favorites`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) return;
+    
+    const data = await response.json();
+    const favoriteIds = data.favorites ? data.favorites.map(f => f.company_id) : [];
+    
+    // Обновляем состояние кнопок для текущих компаний
+    allCompaniesData.forEach(company => {
+      const isFavorite = favoriteIds.includes(company.id);
+      updateFavoriteButton(company.id, isFavorite);
+    });
+    
+  } catch (error) {
+    console.error('Ошибка при обновлении состояния кнопок избранного:', error);
+  }
+}
+
+async function showFavorites() {
+  const token = localStorage.getItem('sessionToken');
+  if (!token) {
+    showNotification('Для просмотра избранных необходимо войти в систему', 'warning');
+    return;
+  }
+
+  const modal = new bootstrap.Modal(document.getElementById('favoritesModal'));
+  const content = document.getElementById('favoritesContent');
+  
+  // Показываем загрузку
+  content.innerHTML = `
+    <div class="text-center">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Загрузка...</span>
+      </div>
+      <p class="mt-2">Загрузка избранных предприятий...</p>
+    </div>
+  `;
+  
+  modal.show();
+
+  try {
+    const response = await fetch(`${API_BASE}/api/favorites`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Ошибка загрузки избранных');
+    }
+    
+    const data = await response.json();
+    
+    if (!data.favorites || data.favorites.length === 0) {
+      content.innerHTML = `
+        <div class="text-center py-5">
+          <i class="bi bi-star" style="font-size: 3rem; color: #ccc;"></i>
+          <h5 class="mt-3 text-muted">У вас пока нет избранных предприятий</h5>
+          <p class="text-muted">Добавляйте предприятия в избранное, чтобы быстро находить их</p>
+        </div>
+      `;
+      return;
+    }
+    
+    // Формируем таблицу с избранными
+    let html = `
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Название</th>
+              <th>Адрес</th>
+              <th>Тип лицензии</th>
+              <th>Статус</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    
+    data.favorites.forEach(favorite => {
+      const statusClass = favorite.license_status_color === 'expired' ? 'danger' : 
+                         favorite.license_status_color === 'expiring_soon' ? 'warning' : 'success';
+      
+      html += `
+        <tr>
+          <td>
+            <strong>${favorite.object_name || favorite.company_name}</strong>
+            <br>
+            <small class="text-muted">Добавлено: ${new Date(favorite.added_at).toLocaleDateString()}</small>
+          </td>
+          <td>${favorite.address || favorite.company_address}</td>
+          <td>
+            <span class="badge bg-secondary">${favorite.license_type_code}</span>
+            <br>
+            <small>${favorite.license_type_name}</small>
+          </td>
+          <td>
+            <span class="badge bg-${statusClass}">${favorite.license_status}</span>
+            ${favorite.days_until_expire !== null ? 
+              `<br><small class="text-muted">${favorite.days_until_expire >= 0 ? 
+                `Осталось ${favorite.days_until_expire} дней` : 
+                `Просрочено ${Math.abs(favorite.days_until_expire)} дней`}</small>` : ''}
+          </td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary" onclick="showOnMap(${favorite.latitude}, ${favorite.longitude})">
+              <i class="bi bi-map"></i> На карте
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="removeFromFavorites(${favorite.company_id})">
+              <i class="bi bi-trash"></i> Удалить
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+    
+    html += `
+          </tbody>
+        </table>
+      </div>
+    `;
+    
+    content.innerHTML = html;
+    
+  } catch (error) {
+    console.error('Ошибка при загрузке избранных:', error);
+    content.innerHTML = `
+      <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle"></i>
+        Ошибка при загрузке избранных предприятий. Попробуйте обновить страницу.
+      </div>
+    `;
+  }
+}
+
+function showOnMap(lat, lon) {
+  // Закрываем модальное окно
+  bootstrap.Modal.getInstance(document.getElementById('favoritesModal')).hide();
+  
+  // Перемещаем карту к точке
+  map.setView([lat, lon], 16);
+  
+  // Находим и открываем маркер
+  markersLayer.eachLayer(marker => {
+    const markerLat = marker.getLatLng().lat;
+    const markerLon = marker.getLatLng().lng;
+    
+    if (Math.abs(markerLat - lat) < 0.0001 && Math.abs(markerLon - lon) < 0.0001) {
+      marker.openPopup();
+    }
+  });
+}
+
+async function removeFromFavorites(companyId) {
+  const token = localStorage.getItem('sessionToken');
+  if (!token) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/api/favorites/${companyId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (response.ok) {
+      showNotification('Предприятие удалено из избранного', 'success');
+      updateFavoriteButton(companyId, false);
+      updateFavoritesCount();
+      showFavorites(); // Обновляем список
+    } else {
+      showNotification('Ошибка при удалении из избранного', 'error');
+    }
+  } catch (error) {
+    console.error('Ошибка при удалении из избранного:', error);
+    showNotification('Ошибка при удалении из избранного', 'error');
+  }
+}
