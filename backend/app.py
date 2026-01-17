@@ -512,8 +512,6 @@ def create_app():
             SELECT 
                 uf.id as favorite_id,
                 uf.company_id,
-                uf.company_name,
-                uf.company_address,
                 uf.added_at,
                 c.object_name,
                 c.address,
@@ -588,7 +586,7 @@ def create_app():
             cursor = conn.cursor(dictionary=True)
             
             # Проверяем существование предприятия
-            cursor.execute("SELECT id, object_name, address FROM companies WHERE id = %s", (company_id,))
+            cursor.execute("SELECT id FROM companies WHERE id = %s", (company_id,))
             company = cursor.fetchone()
             
             if not company:
@@ -610,15 +608,10 @@ def create_app():
             
             # Добавляем в избранное
             insert_query = """
-            INSERT INTO user_favorites (user_id, company_id, company_name, company_address)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO user_favorites (user_id, company_id)
+            VALUES (%s, %s)
             """
-            cursor.execute(insert_query, (
-                user_id, 
-                company_id, 
-                company["object_name"], 
-                company["address"]
-            ))
+            cursor.execute(insert_query, (user_id, company_id))
             
             conn.commit()
             favorite_id = cursor.lastrowid
