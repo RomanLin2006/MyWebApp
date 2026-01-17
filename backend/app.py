@@ -724,6 +724,68 @@ def create_app():
             print(f"Ошибка при проверке избранного: {e}")
             return jsonify({"error": "Внутренняя ошибка сервера"}), 500
 
+    # Эндпоинт для k-means кластеризации просроченных лицензий
+    @app.route("/api/clustering/expired", methods=["POST"])
+    def expired_clustering():
+        """Выполнение k-means кластеризации просроченных лицензий"""
+        if not app.config.get("AUTH_MANAGER"):
+            return jsonify({"error": "Сервис аутентификации недоступен"}), 503
+        
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "Отсутствуют данные"}), 400
+            
+            k = data.get('k')
+            if not k or not isinstance(k, int) or k < 2 or k > 50:
+                return jsonify({"error": "Параметр k должен быть целым числом от 2 до 50"}), 400
+            
+            # Выполняем кластеризацию просроченных лицензий
+            auth_manager = app.config["AUTH_MANAGER"]
+            conn = auth_manager.get_db_connection()
+            cursor = conn.cursor(dictionary=True)
+            
+            # Вызываем процедуру кластеризации просроченных
+            cursor.callproc('kmeans_expired_clustering', [k])
+            
+            # Получаем результаты
+            results = cursor.fetchall()
+            
+            # Получаем границы кластеров для отрисовки
+            cursor.execute("""
+                SELECT 
+                    cluster_id,
+                    COUNT(*) as companies_count,
+                    MIN(latitude) as min_lat,
+                    MAX(latitude) as max_lat,
+                    MIN(longitude) as min_lon,
+                    MAX(longitude) as max_lon,
+                    AVG(latitude) as center_lat,
+                    AVG(longitude) as center_lon
+                FROM companies 
+                WHERE cluster_id IS NOT NULL 
+                  AND license_status_id IN (1, 3, 4, 5)
+                GROUP BY cluster_id 
+                ORDER BY cluster_id
+            """)
+            
+            clusters = cursor.fetchall()
+            
+            cursor.close()
+            conn.close()
+            
+            return jsonify({
+                "success": True,
+                "k": k,
+                "clusters": clusters,
+                "statistics": results,
+                "type": "expired"
+            }), 200
+            
+        except Exception as e:
+            print(f"Ошибка при кластеризации просроченных: {e}")
+            return jsonify({"error": "Ошибка при выполнении кластеризации просроченных лицензий"}), 500
+
     # Эндпоинты аутентификации
     @app.route("/api/auth/register", methods=["POST"])
     def register():

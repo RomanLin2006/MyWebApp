@@ -120,6 +120,36 @@
               </div>
             </div>
 
+            <!-- Зоны концентрации просроченных лицензий -->
+            <div class="row mt-3">
+              <div class="col-12">
+                <div class="card">
+                  <div class="card-header">
+                    <h6 class="mb-0">
+                      <span class="label-icon">⚠️</span> Зоны просроченных лицензий
+                    </h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="row align-items-end">
+                      <div class="col-md-8">
+                        <label for="expiredClustersInput" class="form-label">
+                          Количество зон (k)
+                        </label>
+                        <input type="number" id="expiredClustersInput" class="form-control" 
+                               min="2" max="50" value="5" placeholder="Введите количество зон">
+                        <div class="form-text">Анализ зон концентрации просроченных лицензий</div>
+                      </div>
+                      <div class="col-md-4">
+                        <button id="showExpiredClustersBtn" class="btn btn-danger btn-action w-100">
+                          <span class="btn-icon">📍</span> Показать зоны
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Кнопки действий -->
             <div class="row mt-3">
               <div class="col-12">

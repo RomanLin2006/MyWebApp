@@ -9,6 +9,7 @@ let allCompaniesData = [];
 // Глобальные переменные для хранения состояния
 let originalMarkersData = [];
 let isSimilarMode = false;
+let expiredClusterPolygons = []; // Массив для хранения полигонов просроченных кластеров
 
 // ============================================
 // ИНИЦИАЛИЗАЦИЯ КАРТЫ
@@ -485,6 +486,9 @@ function clearFilters() {
   document.getElementById("districtFilter").value = "";
   document.getElementById("licenseTypeFilter").value = "";
   
+  // Очищаем зоны просроченных лицензий
+  clearExpiredClusterPolygons();
+  
   // Возвращаем исходные маркеры если был режим похожих
   if (isSimilarMode) {
     markersLayer.clearLayers();
@@ -533,6 +537,12 @@ document.addEventListener("DOMContentLoaded", function () {
   const favoritesBtn = document.getElementById('favoritesBtn');
   if (favoritesBtn) {
     favoritesBtn.addEventListener('click', showFavorites);
+  }
+  
+  // Обработчик для кнопки показа зон просроченных лицензий
+  const showExpiredClustersBtn = document.getElementById('showExpiredClustersBtn');
+  if (showExpiredClustersBtn) {
+    showExpiredClustersBtn.addEventListener('click', showExpiredClusters);
   }
   
   // Обновляем счетчик избранных при загрузке
@@ -868,4 +878,131 @@ async function removeFromFavorites(companyId) {
     console.error('Ошибка при удалении из избранного:', error);
     showNotification('Ошибка при удалении из избранного', 'error');
   }
+}
+
+// ============================================
+// ФУНКЦИИ КЛАСТЕРИЗАЦИИ ПРОСРОЧЕННЫХ ЛИЦЕНЗИЙ
+// ============================================
+
+async function showExpiredClusters() {
+  const k = parseInt(document.getElementById('expiredClustersInput').value);
+  
+  if (!k || k < 2 || k > 50) {
+    showNotification('Введите количество зон от 2 до 50', 'warning');
+    return;
+  }
+
+  try {
+    // Показываем индикатор загрузки
+    const btn = document.getElementById('showExpiredClustersBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Анализ...';
+    btn.disabled = true;
+
+    const response = await fetch(`${API_BASE}/api/clustering/expired`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ k: k })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Ошибка кластеризации просроченных лицензий');
+    }
+
+    // Очищаем предыдущие зоны
+    clearExpiredClusterPolygons();
+
+    // Рисуем новые зоны
+    data.clusters.forEach(cluster => {
+      drawExpiredClusterPolygon(cluster);
+    });
+
+    showNotification(`Найдено ${data.clusters.length} зон просроченных лицензий`, 'success');
+
+  } catch (error) {
+    console.error('Ошибка при кластеризации просроченных:', error);
+    showNotification('Ошибка при выполнении кластеризации просроченных лицензий', 'error');
+  } finally {
+    // Восстанавливаем кнопку
+    const btn = document.getElementById('showExpiredClustersBtn');
+    btn.innerHTML = '<span class="btn-icon">📍</span> Показать зоны';
+    btn.disabled = false;
+  }
+}
+
+function drawExpiredClusterPolygon(cluster) {
+  // Создаем полигон по границам кластера
+  const bounds = [
+    [cluster.min_lat, cluster.min_lon], // Юго-запад
+    [cluster.min_lat, cluster.max_lon], // Юго-восток
+    [cluster.max_lat, cluster.max_lon], // Северо-восток
+    [cluster.max_lat, cluster.min_lon], // Северо-запад
+    [cluster.min_lat, cluster.min_lon]  // Замыкаем полигон
+  ];
+
+  // Создаем полигон для просроченных лицензий (красный с оранжевой заливкой)
+  const polygon = L.polygon(bounds, {
+    color: '#dc3545',
+    fillColor: '#ff6b35',
+    fillOpacity: 0.15,  // Уменьшаем прозрачность
+    weight: 2,           // Уменьшаем толщину
+    opacity: 0.7,         // Уменьшаем непрозрачность границы
+    dashArray: '10, 5'
+  });
+
+  // Добавляем popup с информацией о кластере просроченных
+  const popupContent = `
+    <div class="cluster-popup expired-cluster">
+      <h6 style="color: #dc3545;">⚠️ Зона просроченных #${cluster.cluster_id}</h6>
+      <div><strong>Просроченных лицензий:</strong> ${cluster.companies_count}</div>
+      <div><strong>Центр зоны:</strong> ${cluster.avg_latitude || cluster.center_lat}, ${cluster.avg_longitude || cluster.center_lon}</div>
+      <div><strong>Плотность:</strong> ${(cluster.companies_count / 0.01).toFixed(1)} км²</div>
+      <div class="mt-2">
+        <small class="text-danger">
+          <i class="bi bi-exclamation-triangle"></i> 
+          Требуется внимание регулятора
+        </small>
+      </div>
+    </div>
+  `;
+  
+  polygon.bindPopup(popupContent);
+  polygon.addTo(map);
+  
+  // Сохраняем полигон для последующей очистки
+  expiredClusterPolygons.push(polygon);
+
+  // Добавляем маркер центра кластера (красный с предупреждением)
+  const centerMarker = L.circleMarker([cluster.avg_latitude || cluster.center_lat, cluster.avg_longitude || cluster.center_lon], {
+    radius: 10,
+    fillColor: '#dc3545',
+    color: '#fff',
+    weight: 3,
+    fillOpacity: 0.9,
+    className: 'expired-cluster-center'
+  });
+
+  const centerPopup = `
+    <div class="cluster-center-popup expired-center">
+      <strong style="color: #dc3545;">⚠️ Центр зоны #${cluster.cluster_id}</strong><br>
+      <span style="color: #dc3545;">${cluster.companies_count} просроченных лицензий</span>
+    </div>
+  `;
+
+  centerMarker.bindPopup(centerPopup);
+  centerMarker.addTo(map);
+  
+  expiredClusterPolygons.push(centerMarker);
+}
+
+function clearExpiredClusterPolygons() {
+  // Удаляем все полигоны и маркеры просроченных кластеров
+  expiredClusterPolygons.forEach(polygon => {
+    map.removeLayer(polygon);
+  });
+  expiredClusterPolygons = [];
 }
