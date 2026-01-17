@@ -10,6 +10,7 @@ let allCompaniesData = [];
 let originalMarkersData = [];
 let isSimilarMode = false;
 let expiredClusterPolygons = []; // Массив для хранения полигонов просроченных кластеров
+let isPopupOpen = false; // Флаг для отслеживания открытых popup
 
 // ============================================
 // ИНИЦИАЛИЗАЦИЯ КАРТЫ
@@ -63,20 +64,12 @@ function initMap() {
     
     scaleIndicator.innerHTML = `Масштаб: ${zoom} | ${meters}`;
     
-    // Обновляем данные только если не в режиме похожих
-    if (!isSimilarMode) {
-      loadCompanies();
-    }
-  });
-  
-  // Добавляем обработчики для динамической загрузки
-  map.on('moveend', function() {
-    // Обновляем данные только если не в режиме похожих
-    if (!isSimilarMode) {
+    // Обновляем данные только если не в режиме похожих и нет открытых popup
+    if (!isSimilarMode && !isPopupOpen) {
       clearTimeout(window.mapMoveTimeout);
       window.mapMoveTimeout = setTimeout(() => {
         loadCompanies();
-      }, 500); // 500ms debounce
+      }, 2000); // 2 секунды вместо 500мс
     }
   });
   
@@ -271,6 +264,15 @@ async function loadCompanies() {
         autoClose: false,
         closeOnClick: false,
         closeOnEscapeKey: false
+      });
+
+      // Добавляем обработчики popup событий
+      marker.on("popupopen", function() {
+        isPopupOpen = true;
+      });
+      
+      marker.on("popupclose", function() {
+        isPopupOpen = false;
       });
 
       // Сохраняем данные компании в маркере
@@ -973,6 +975,15 @@ function drawExpiredClusterPolygon(cluster) {
   polygon.bindPopup(popupContent);
   polygon.addTo(map);
   
+  // Добавляем обработчики popup событий для полигонов
+  polygon.on("popupopen", function() {
+    isPopupOpen = true;
+  });
+  
+  polygon.on("popupclose", function() {
+    isPopupOpen = false;
+  });
+  
   // Сохраняем полигон для последующей очистки
   expiredClusterPolygons.push(polygon);
 
@@ -995,6 +1006,15 @@ function drawExpiredClusterPolygon(cluster) {
 
   centerMarker.bindPopup(centerPopup);
   centerMarker.addTo(map);
+  
+  // Добавляем обработчики popup событий для маркеров центров
+  centerMarker.on("popupopen", function() {
+    isPopupOpen = true;
+  });
+  
+  centerMarker.on("popupclose", function() {
+    isPopupOpen = false;
+  });
   
   expiredClusterPolygons.push(centerMarker);
 }
