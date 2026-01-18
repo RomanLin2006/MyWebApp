@@ -291,7 +291,7 @@ class AuthManager {
             userInfo.style.display = 'flex';
             
             const displayName = this.currentUser.first_name || this.currentUser.email;
-            userName.textContent = displayName;
+            userName.textContent = `Привет, ${displayName}!`;
         } else {
             // Пользователь не авторизован
             authButtons.style.display = 'flex';

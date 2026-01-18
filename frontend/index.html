@@ -17,8 +17,8 @@
     <div class="app-container">
       <header class="app-header">
         <h1 class="app-title">
-          <span class="app-icon">🍺</span>
-          Мониторинг алкогольных лицензий
+          <img src="../images/logo.png" alt="LiqLicance Logo" class="app-logo">
+          <span class="title-text">LiqLicance</span>
         </h1>
         
         <!-- Кнопки аутентификации -->
@@ -34,12 +34,12 @@
         <!-- Информация о пользователе (скрыта по умолчанию) -->
         <div class="user-info" id="userInfo" style="display: none;">
           <div class="user-details">
+            <span class="user-name" id="userName">Привет, Пользователь!</span>
             <button class="btn btn-outline-light btn-sm me-2" id="favoritesBtn">
-              <i class="bi bi-star"></i> Избранное
+              <i class="bi bi-star-fill"></i>⭐Избранное
               <span class="badge bg-warning text-dark ms-1" id="favoritesCount" style="display: none;">0</span>
             </button>
-            <span class="user-name" id="userName">Пользователь</span>
-            <button class="btn btn-outline-light btn-sm ms-2" id="logoutBtn">
+            <button class="btn btn-light btn-sm ms-2" id="logoutBtn">
               <i class="bi bi-box-arrow-right"></i> Выход
             </button>
           </div>
