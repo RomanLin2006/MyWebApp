@@ -1,12 +1,11 @@
 \documentclass[a4paper,14pt]{extarticle}
-
 \usepackage{float}
 \usepackage[T2A]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage[russian]{babel}
-
+\usepackage{xurl}
 \usepackage{tempora} 
-\usepackage{fvextra} % Расширение для Verbatim с поддержкой переносов
+\usepackage{fvextra} 
 
 \usepackage[left=30mm,right=15mm,top=20mm,bottom=20mm]{geometry}
 
@@ -75,7 +74,6 @@
 
 \begin{document}
 
-% --- ТИТУЛЬНЫЙ ЛИСТ ---
 \begin{titlepage}
     \begin{center}
         \begin{spacing}{1.0}
@@ -125,7 +123,6 @@
 \newpage
 \setcounter{page}{2}
 
-% --- ВВЕДЕНИЕ ---
 \section*{Введение}
 \addcontentsline{toc}{section}{Введение}
 % Принудительный отступ для не нумерованного заголовка
@@ -138,8 +135,6 @@
 В качестве решения предлагается разработка веб-приложения, которое интегрирует открытые данные в интерактивную карту с применением алгоритмов кластеризации (k-means) для анализа плотности распределения объектов. Это позволит трансформировать «сырые» данные в эффективный инструмент мониторинга и поддержки принятия решений.
 
 \newpage
-
-% --- ПОСТАНОВКА ЗАДАЧИ ---
 \section{Постановка задачи}
 
 Цель работы — разработать клиентоориентированное веб-приложение для визуального мониторинга статуса алкогольных лицензий предприятий Москвы на основе открытых данных, обеспечивающее наглядное представление информации и аналитическую поддержку пользователей.
@@ -156,7 +151,6 @@
 
 Исходные данные: В работе используется актуальный датасет «Реестр лицензий на розничную продажу алкогольной продукции» с Портала открытых данных Правительства Москвы (data.mos.ru).
 
-
 Выбранные средства разработки:
 \begin{enumerate}
     \item Python, Flask — разработка серверной логики и API;
@@ -165,8 +159,6 @@
     \item HTML5, CSS3 — проектирование визуального интерфейса.
 \end{enumerate}
 
-
-% --- ПРОЕКТИРОВАНИ И РАЗРАБОТКА ---
 \section{Проектирование и разработка}
 
 \newcommand{\code}[1]{{\small\texttt{#1}}}
@@ -179,7 +171,7 @@
     \centering
     % Устанавливаем ширину ровно в ширину текстового поля
     \includegraphics[width=\textwidth]{usecase_diagram.png.png} 
-    \caption{Физическая модель базы данных}
+    \caption{Диаграмма вариантов использования}
     \label{fig:usecase}
 \end{figure}
 
@@ -199,7 +191,7 @@
     \centering
     % Устанавливаем ширину ровно в ширину текстового поля
     \includegraphics[width=\textwidth]{clases_diagram.png} 
-    \caption{Физическая модель базы данных}
+    \caption{Диаграмма классов}
     \label{fig:usecase}
 \end{figure}
 
@@ -247,7 +239,7 @@ Frontend часть приложения была разработана с ис
     \label{fig:similar}
 \end{figure}
 
-Пользователь регистрируется в системе (рисунок \ref{fig:register}) и совершает вход в созданный аккаунт (рисунок \ref{fig:login}). 
+Пользователь регистрируется в системе (рисунок \ref{fig:register}) и совершает вход в созданный аккаунт (рисунок \ref{fig:login}). Далее находит предприятия через карту и добавляет их в избранное (рисунок \ref{fig:add_fav}). Список сохраненных организаций доступен в модальном окне «Избранные» (рисунок \ref{fig:fav_list}).
 
 \begin{figure}[H]
     \centering
@@ -259,8 +251,6 @@ Frontend часть приложения была разработана с ис
     \caption{Форма входа в аккаунт}
     \label{fig:login}
 \end{figure}
-
-Пользователь находит предприятия через карту и добавляет их в избранное (рисунок \ref{fig:add_fav}). Список сохраненных организаций доступен в модальном окне «Избранные» (рисунок \ref{fig:fav_list}).
 
 \begin{figure}[H]
     \centering
@@ -287,7 +277,7 @@ Frontend часть приложения была разработана с ис
 В ходе выполнения курсового проекта было разработано веб-приложение для визуального мониторинга и аналитики статуса алкогольных лицензий предприятий города Москвы. Система реализована на базе фреймворка \code{Flask} (Python) и СУБД \code{MySQL} с использованием библиотеки \code{Leaflet.js} для картографической визуализации.
 
 Разработанное решение позволило успешно трансформировать «сырые» открытые данные Правительства Москвы в интерактивный инструмент мониторинга. Ключевыми достижениями проекта стали реализация системы динамической фильтрации, модуля аутентификации с использованием современного хэширования \code{Argon2}, а также интеграция аналитического алгоритма \code{k-means} кластеризации для выявления зон концентрации просроченных лицензий.
-К достоинствам системы можно отнести высокую наглядность представления данных, наличие инструментов пространственного анализа (поиск объектов в радиусе 1000 метров), оптимизацию производительности за счет динамической загрузки маркеров и адаптивный интерфейс, реализованный с помощью \code{Bootstrap}.
+К достоинствам системы можно отнести высокую наглядность представления данных, наличие инструментов пространственного анализа, оптимизацию производительности за счет динамической загрузки маркеров и адаптивный интерфейс, реализованный с помощью \code{Bootstrap}.
 
 Вместе с тем, среди недостатков стоит отметить, что в текущей версии не реализовано автоматизированное тестирование кода, а аналитический функционал ограничен только алгоритмом кластеризации и поиском похожих предприятий.
 
@@ -296,18 +286,26 @@ Frontend часть приложения была разработана с ис
 Исходный код проекта и история изменений доступны в репозиторий: [https://github.com/RomanLin2006/MyWebApp].
 
 \section*{Список литературы и интернет-ресурсов}
-Реестр лицензий на розничную продажу алкогольной продукции // Портал открытых данных Правительства Москвы. — URL: https://data.mos.ru/opendata/7710152113-reestr-litsenziy-na-roznichnuyu-prodaju-alkogolnoy-produktsii (дата обращения: 18.01.2026).
+\addcontentsline{toc}{section}{Список литературы и интернет-ресурсов}
 
-Гринберг, М. Разработка веб-приложений с использованием Flask на языке Python / М. Гринберг. — М. : ДМК Пресс, 2016. — 272 с.
+\begin{enumerate}[label={}, leftmargin=0pt, itemindent=1.25cm, labelsep=0pt, itemsep=10pt, parsep=0pt]
+    \justifying % Выравнивание по ширине
 
-Argon2: the memory-hard function for password hashing and other applications. RFC 9106 // IETF Datatracker. — URL: https://datatracker.ietf.org/doc/html/rfc9106 (дата обращения: 18.01.2026).
+    \item Реестр лицензий на розничную продажу алкогольной продукции // Портал открытых данных Правительства Москвы : [сайт]. — URL: \url{https://data.mos.ru/opendata/7710152113-reestr-litsenziy-na-roznichnuyu-prodaju-alkogolnoy-produktsii} (дата обращения: 20.12.2025).
 
-Leaflet — an open-source JavaScript library for mobile-friendly interactive maps. — URL: https://leafletjs.com (дата обращения: 18.01.2026).
+    \item Гринберг М. Разработка веб-приложений с использованием Flask на языке Python / М. Гринберг. — Москва : ДМК Пресс, 2016. — 272 с.
 
-Bootstrap — The most popular HTML, CSS, and JS library in the world. — URL: https://getbootstrap.com (дата обращения: 18.01.2026).
+    \item Argon2: the memory-hard function for password hashing and other applications. RFC 9106 // IETF Datatracker : [сайт]. — URL: \url{https://datatracker.ietf.org/doc/html/rfc9106} (дата обращения: 14.01.2026).
 
-Джеймс, Г. Введение в статистическое обучение с примерами на языке R / Г. Джеймс, Д. Уиттон, Т. Хасти, Р. Тибширани ; пер. с англ. С. Э. Мастицкого. — М. : ДМК Пресс, 2016. — 456 с. (Основы k-means кластеризации).
+    \item Leaflet — an open-source JavaScript library for mobile-friendly interactive maps : [сайт]. — URL: \url{https://leafletjs.com} (дата обращения: 10.01.2026).
 
+    \item Bootstrap — The most popular HTML, CSS, and JS library in the world : [сайт]. — URL: \url{https://getbootstrap.com} (дата обращения: 18.01.2026).
+
+    \item Джеймс Г. Введение в статистическое обучение с примерами на языке R / Г. Джеймс, Д. Уиттон, Т. Хасти, Р. Тибширани ; пер. с англ. С. Э. Мастицкого. — Москва : ДМК Пресс, 2016. — 456 с.
+
+\end{enumerate}
+
+\newpage
 \section*{Приложение}
 
 Листинг 1 — функция \code{get\_db\_connection()}
@@ -342,7 +340,6 @@ def register_user(self, email: str, password: str,
         
     if not data_processing_consent:
         return {"success": False, "message": "Дайте согласие на обработку данных"}
-        
     try:
         connection = self.get_db_connection()
         cursor = connection.cursor()
@@ -352,16 +349,13 @@ def register_user(self, email: str, password: str,
         if cursor.fetchone():
             self.log_auth_action(email, "register_failed", ip_address, 
                                  user_agent, "Email уже существует")
-            return {"success": False, "message": "Email уже занят"}
-            
-        password_hash = self.hash_password(password)
-            
+            return {"success": False, "message": "Email уже занят"}  
+        password_hash = self.hash_password(password) 
         insert_query = """
         INSERT INTO users (email, password_hash, first_name, last_name, 
         phone, privacy_policy_accepted, data_processing_consent)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """
-            
+        """ 
         cursor.execute(insert_query, (
             email.lower(), password_hash, first_name, last_name, phone,
             privacy_policy_accepted, data_processing_consent
@@ -388,19 +382,24 @@ def hash_password(self, password: str) -> str:
         return ph.hash(password)
 \end{Verbatim}
 
-Листинг 3 — функции \code{login\_user()} и \code{ generate\_session\_token(()}
+Листинг 3 — функции \code{login\_user()} и \code{ generate\_session\_token()}
 
-\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+\begin{Verbatim}[
+    fontsize=\fontsize{12pt}{14.4pt}\selectfont, 
+    xleftmargin=1.25cm,    % Отступ слева (под красную строку)
+    xrightmargin=0pt,      % Код будет идти до самого правого края текста
+    breaklines=true,       % Включаем переносы
+    breakindent=2em,       % Отступ для перенесенных строк
+    breakanywhere=true     % Разрешить разрыв строки в любом месте (если названия очень длинные)
+]
 def login_user(self, email: str, password: str, ip_address: str = None, 
                   user_agent: str = None) -> Dict[str, Any]:
         
         if not self.validate_email(email):
             return {"success": False, "message": "Некорректный email адрес"}
-        
         try:
             connection = self.get_db_connection()
-            cursor = connection.cursor(dictionary=True)
-            
+            cursor = connection.cursor(dictionary=True)     
             self.log_auth_action(email, "login_attempt", ip_address, user_agent)
             query = """
             SELECT id, email, password_hash, first_name, last_name, is_active, 
@@ -408,10 +407,8 @@ def login_user(self, email: str, password: str, ip_address: str = None,
             FROM users 
             WHERE email = %s AND is_active = TRUE
             """
-            
             cursor.execute(query, (email.lower(),))
             user = cursor.fetchone()
-            
             if not user:
                 self.log_auth_action(email, "login_failed", ip_address, user_agent, "User not found")
                 return {"success": False, "message": "Неверный email или пароль"}
@@ -419,19 +416,16 @@ def login_user(self, email: str, password: str, ip_address: str = None,
             if not self.verify_password(password, user['password_hash']):
                 self.log_auth_action(email, "login_failed", ip_address, user_agent, "Invalid password")
                 return {"success": False, "message": "Неверный email или пароль"}
- 
             session_token = self.generate_session_token()
-            expires_at = datetime.now() + timedelta(days=7)  # Сессия на 7 дней
+            expires_at = datetime.now() + timedelta(days=7)  
 
             session_query = """
             INSERT INTO user_sessions (user_id, session_token, expires_at, ip_address, user_agent)
             VALUES (%s, %s, %s, %s, %s)
             """
-            
             cursor.execute(session_query, (
                 user['id'], session_token, expires_at, ip_address, user_agent
             ))
-
             update_query = "UPDATE users SET last_login = NOW() WHERE id = %s"
             cursor.execute(update_query, (user['id'],))
             connection.commit()
@@ -442,11 +436,11 @@ def login_user(self, email: str, password: str, ip_address: str = None,
                 "message": "Вход выполнен успешно",
                 "session_token": session_token,
                 "user": {
-                    "id": user['id'],
-                    "email": user['email'],
-                    "first_name": user['first_name'],
-                    "last_name": user['last_name'],
-                    "email_verified": user['email_verified']
+                "id": user['id'],
+                "email": user['email'],
+                "first_name": user['first_name'],
+                "last_name": user['last_name'],
+                "email_verified": user['email_verified']
                 }
             }
         except Error as e:
@@ -457,25 +451,30 @@ def login_user(self, email: str, password: str, ip_address: str = None,
             if 'connection' in locals() and connection.is_connected():
                 cursor.close()
                 connection.close()
-                
+     
 def generate_session_token(self) -> str:
         return secrets.token_urlsafe(32)
 \end{Verbatim}
 
 Листинг 4 — функция \code{load\_all\_data()}
-\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+\begin{Verbatim}[
+    fontsize=\fontsize{12pt}{14.4pt}\selectfont, 
+    xleftmargin=1.25cm,    % Отступ слева (под красную строку)
+    xrightmargin=0pt,      % Код будет идти до самого правого края текста
+    breaklines=true,       % Включаем переносы
+    breakindent=2em,       % Отступ для перенесенных строк
+    breakanywhere=true     % Разрешить разрыв строки в любом месте (если названия очень длинные)
+]
 def load_all_data():
     print("=" * 60)
     print("ЗАГРУЗКА ДАННЫХ ИЗ API В БАЗУ ДАННЫХ (ЛОКАЛЬНО)")
     print("=" * 60)
-
     connection = get_db_connection()
     if not connection:
         print("Не удалось подключиться к БД!")
         return
 
     cursor = connection.cursor()
-
     print("\n1. Получение количества записей...")
     try:
         url = f"{API_BASE_URL}/datasets/{DATASET_ID}/count?api_key={API_KEY}"
@@ -489,14 +488,13 @@ def load_all_data():
         )
         if response.status_code == 200:
             total_count = int(response.text.strip('"'))
-            print(f"   ✓ Всего записей в датасете: {total_count}")
+            print(f"  Всего записей в датасете: {total_count}")
         else:
-            print(f"   ⚠ Не удалось получить количество, продолжаем...")
+            print(f"  Не удалось получить количество, продолжаем...")
             total_count = None
     except Exception as e:
-        print(f"   ⚠ Ошибка: {e}")
+        print(f"  Ошибка: {e}")
         total_count = None
-
     print("\n2. Загрузка данных...")
     skip = 0
     loaded = 0
@@ -505,13 +503,11 @@ def load_all_data():
 
     while True:
         print(f"\n   Загрузка записей {skip} - {skip + BATCH_SIZE}...")
-
         data = fetch_data_from_api(skip, BATCH_SIZE)
 
         if not data or len(data) == 0:
             print("   Нет данных, завершение загрузки.")
             break
-
         batch_loaded = 0
         for record in data:
             if process_company(cursor, record):
@@ -520,17 +516,15 @@ def load_all_data():
             else:
                 errors += 1
         connection.commit()
-
-        print(f"   ✓ Загружено: {batch_loaded} записей (всего: {loaded})")
+        print(f"Загружено: {batch_loaded} записей (всего: {loaded})")
 
         if len(data) < BATCH_SIZE:
-            print("   Достигнут конец данных.")
+            print("Достигнут конец данных.")
             break
 
         skip += BATCH_SIZE
         time.sleep(0.3)  
     elapsed_time = time.time() - start_time
-
     print("\n" + "=" * 60)
     print("ЗАГРУЗКА ЗАВЕРШЕНА")
     print("=" * 60)
@@ -541,14 +535,21 @@ def load_all_data():
     if total_count:
         print(f"Ожидалось записей: {total_count}")
         if loaded < total_count:
-            print("⚠ Загружено меньше, чем ожидалось. Возможно, некоторые записи пропущены.")
+            print("Загружено меньше, чем ожидалось. Возможно, некоторые записи пропущены.")
     cursor.close()
     connection.close()
     print("\n✓ Готово!")
 \end{Verbatim}
 
 Листинг 5 — функция \code{initMap()}
-\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+\begin{Verbatim}[
+    fontsize=\fontsize{12pt}{14.4pt}\selectfont, 
+    xleftmargin=1.25cm,    % Отступ слева (под красную строку)
+    xrightmargin=0pt,      % Код будет идти до самого правого края текста
+    breaklines=true,       % Включаем переносы
+    breakindent=2em,       % Отступ для перенесенных строк
+    breakanywhere=true     % Разрешить разрыв строки в любом месте (если названия очень длинные)
+]
 function initMap() {
   map = L.map("map").setView([55.75, 37.62], 10);
 
@@ -605,17 +606,22 @@ function initMap() {
 \end{Verbatim}
 
 Листинг 6 — функция \code{loadCompanies()}
-\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+\begin{Verbatim}[
+    fontsize=\fontsize{12pt}{14.4pt}\selectfont, 
+    xleftmargin=1.25cm,    % Отступ слева (под красную строку)
+    xrightmargin=0pt,      % Код будет идти до самого правого края текста
+    breaklines=true,       % Включаем переносы
+    breakindent=2em,       % Отступ для перенесенных строк
+    breakanywhere=true     % Разрешить разрыв строки в любом месте (если названия очень длинные)
+]
 async function loadCompanies() {
   if (isSimilarMode) {
     return;
   }
   const params = new URLSearchParams();
-
   const zoom = map.getZoom();
   const bounds = map.getBounds();
   if (zoom >= 16) {
-
     params.set("load_all", "true");
     params.set("bounds", `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`);
     params.set("zoom_level", zoom);
@@ -638,7 +644,6 @@ async function loadCompanies() {
 
   const search = document.getElementById("searchInput").value.trim();
   if (search) params.set("search", search);
-
   try {
     const resp = await fetch(`${API_BASE}/api/companies?${params.toString()}`);
     
@@ -687,12 +692,11 @@ async function loadCompanies() {
               <span id="favoriteText-${c.id}">Добавить в избранное</span>
             </button>
             <button class="btn-sm btn-primary" onclick="findSimilarCompanies(${c.latitude}, ${c.longitude}, '${c.license_type_code}', '${c.inn || ''}')">
-              �� Поиск похожих (1000м)
+             Поиск похожих (1000м)
             </button>
           </div>
         </div>
       `;
-    
       marker.bindPopup(popupHtml, {
         className: "custom-popup",
         maxWidth: 420,
@@ -700,19 +704,15 @@ async function loadCompanies() {
         closeOnClick: false,
         closeOnEscapeKey: false
       });
-
       marker.on("popupopen", function() {
         isPopupOpen = true;
       });
-      
       marker.on("popupclose", function() {
         isPopupOpen = false;
       });
-
       marker._companyData = c;
       const originalRadius = 8;
       const hoveredRadius = 11;
-
       marker.on("mouseover", function (e) {
         marker.setRadius(hoveredRadius);
         marker.setStyle({
@@ -724,7 +724,6 @@ async function loadCompanies() {
           marker._path.classList.add("hovered");
         }
       });
-
       marker.on("mouseout", function (e) {
         marker.setRadius(originalRadius);
         marker.setStyle({
@@ -736,14 +735,12 @@ async function loadCompanies() {
           marker._path.classList.remove("hovered");
         }
       });
-
       marker.on("click", function (e) {
         marker.openPopup();
       });
       marker.addTo(markersLayer);
       count++;
     });
-
     let countText = `${count} точек`;
     if (zoom >= 16) {
       countText += " (все в области)";
@@ -760,8 +757,16 @@ async function loadCompanies() {
   }
 }
 \end{Verbatim}
+
 Листинг 7 — функции \code{handleLogin()} и \code{handleRegister()}
-\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+\begin{Verbatim}[
+    fontsize=\fontsize{12pt}{14.4pt}\selectfont, 
+    xleftmargin=1.25cm,    % Отступ слева (под красную строку)
+    xrightmargin=0pt,      % Код будет идти до самого правого края текста
+    breaklines=true,       % Включаем переносы
+    breakindent=2em,       % Отступ для перенесенных строк
+    breakanywhere=true     % Разрешить разрыв строки в любом месте (если названия очень длинные)
+]
 async handleLogin(event) {
         event.preventDefault();
         const email = document.getElementById('loginEmail').value;
@@ -782,7 +787,6 @@ async handleLogin(event) {
             if (data.success) {
                 this.sessionToken = data.session_token;
                 this.currentUser = data.user;
-                
                 localStorage.setItem('sessionToken', this.sessionToken);
                 localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
             
@@ -799,7 +803,6 @@ async handleLogin(event) {
             this.showNotification('Ошибка соединения с сервером', 'error');
         }
     }
-    
     async handleRegister(event) {
         event.preventDefault();
         
@@ -829,9 +832,7 @@ async handleLogin(event) {
             if (data.success) {
                 this.hideRegisterModal();
                 this.showNotification('Регистрация успешна! Теперь вы можете войти.', 'success');
-                
                 document.getElementById('registerForm').reset();
-
                 setTimeout(() => this.showLoginModal(), 1500);
             } else {
                 this.showNotification(data.message || 'Ошибка регистрации', 'error');
@@ -843,8 +844,15 @@ async handleLogin(event) {
     }
 \end{Verbatim}
 
-Листинг 8 — функция \code{get_companies()}
-\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+Листинг 8 — функция \code{get\_companies()}
+\begin{Verbatim}[
+    fontsize=\fontsize{12pt}{14.4pt}\selectfont, 
+    xleftmargin=1.25cm,    % Отступ слева (под красную строку)
+    xrightmargin=0pt,      % Код будет идти до самого правого края текста
+    breaklines=true,       % Включаем переносы
+    breakindent=2em,       % Отступ для перенесенных строк
+    breakanywhere=true     % Разрешить разрыв строки в любом месте (если названия очень длинные)
+]
 def get_companies():
         limit = min(int(request.args.get("limit", 200)), 1000)
         load_all = request.args.get("load_all", "false").lower() == "true"
@@ -860,7 +868,6 @@ def get_companies():
         if not conn:
             return jsonify({"error": "DB connection failed"}), 500
         cursor = conn.cursor(dictionary=True)
-
         try:
             base_sql = """
                 SELECT 
@@ -894,10 +901,8 @@ def get_companies():
                 WHERE c.longitude IS NOT NULL
                 AND c.latitude IS NOT NULL
             """
-            
             conditions = []
             params = []
-
             if load_all and bounds:
                 try:
                     south, west, north, east = map(float, bounds.split(','))
@@ -908,7 +913,7 @@ def get_companies():
                     params.extend([south, north, west, east])
                 except (ValueError, IndexError):
                     print(f"Неверный формат bounds: {bounds}")
-            
+
             if status_color:
                 conditions.append("""
                     CASE 
@@ -944,7 +949,6 @@ def get_companies():
 
             if conditions:
                 base_sql += " AND " + " AND ".join(conditions)
-  
             base_sql += " ORDER BY c.id"
 
             if not load_all:
@@ -953,7 +957,6 @@ def get_companies():
             
             cursor.execute(base_sql, params)
             rows = cursor.fetchall()
-            
         except Error as e:
             conn.close()
             print(f"Ошибка SQL при получении компаний: {e}")
@@ -964,12 +967,20 @@ def get_companies():
             import traceback
             traceback.print_exc()
             return jsonify({"error": str(e)}), 500
-
         conn.close()
         return jsonify(rows)
 \end{Verbatim}
+
 Листинг 9 — функция \code{toggleFavorite()}
-\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+
+\begin{Verbatim}[
+    fontsize=\fontsize{12pt}{14.4pt}\selectfont, 
+    xleftmargin=1.25cm,    % Отступ слева (под красную строку)
+    xrightmargin=0pt,      % Код будет идти до самого правого края текста
+    breaklines=true,       % Включаем переносы
+    breakindent=2em,       % Отступ для перенесенных строк
+    breakanywhere=true     % Разрешить разрыв строки в любом месте (если названия очень длинные)
+]
 async function toggleFavorite(companyId) {
   const token = localStorage.getItem('sessionToken');
   if (!token) {
@@ -982,7 +993,6 @@ async function toggleFavorite(companyId) {
         'Authorization': `Bearer ${token}`
       }
     });
-    
     const checkData = await checkResponse.json();
     
     if (checkData.is_favorite) {
@@ -993,7 +1003,6 @@ async function toggleFavorite(companyId) {
           'Authorization': `Bearer ${token}`
         }
       });
-      
       if (deleteResponse.ok) {
         updateFavoriteButton(companyId, false);
         showNotification('Предприятие удалено из избранного', 'success');
@@ -1012,7 +1021,6 @@ async function toggleFavorite(companyId) {
           company_id: companyId
         })
       });
-      
       if (addResponse.ok) {
         updateFavoriteButton(companyId, true);
         showNotification('Предприятие добавлено в избранное', 'success');
@@ -1030,7 +1038,7 @@ async function toggleFavorite(companyId) {
 \end{Verbatim}
 
 Листинг 10 — функция \code{findSimilarCompanies()}
-\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm, breaklines=true]
 function findSimilarCompanies(lat, lon, licenseType, excludeInn) {
   if (!isSimilarMode) {
     originalMarkersData = [];
@@ -1043,24 +1051,21 @@ function findSimilarCompanies(lat, lon, licenseType, excludeInn) {
     if (company.latitude == null || company.longitude == null) return false;
     if (company.inn === excludeInn) return false; 
     if (company.license_type_code !== licenseType) return false; 
-    
 
     const distance = Math.sqrt(
       Math.pow(company.latitude - lat, 2) + 
       Math.pow(company.longitude - lon, 2)
-    ) * 111000; // Примерно 111км на 1 градус
+    ) * 111000;
     
-    return distance <= 1000; // 1000 метров
+    return distance <= 1000;
   });
-
   markersLayer.clearLayers();
-  
   similar.forEach((c) => {
     const color = getColorByStatusColor(c.license_status_color);
     const markerClass = getMarkerClass(c.license_status_color);
 
     const marker = L.circleMarker([c.latitude, c.longitude], {
-      radius: 10, /
+      radius: 10,
       color: color,
       fillColor: color,
       fillOpacity: 0.9,
@@ -1082,8 +1087,7 @@ function findSimilarCompanies(lat, lon, licenseType, excludeInn) {
           <div><strong>Статус:</strong> ${c.license_status || "-"}</div>
           ${c.inn ? `<div><strong>ИНН:</strong> ${c.inn}</div>` : ""}
         </div>
-      </div>
-    
+      </div>\`;
     marker.bindPopup(popupHtml, {
       className: "custom-popup",
       maxWidth: 420,
@@ -1091,11 +1095,10 @@ function findSimilarCompanies(lat, lon, licenseType, excludeInn) {
       closeOnClick: false,
       closeOnEscapeKey: false
     });
-
     marker.addTo(markersLayer);
   });
-  showNotification(`Найдено ${similar.length} похожих предприятий в радиусе 1000м`);
-  document.getElementById("pointsCount").textContent = `${similar.length} точек (похожие)`;
+  showNotification(`Найдено ${similar.length} похожих предприятий`);
+  document.getElementById("pointsCount").textContent = `${similar.length} точек`;
 }
 \end{Verbatim}
 \end{document}
