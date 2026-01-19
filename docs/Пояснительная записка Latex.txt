@@ -6,6 +6,7 @@
 \usepackage[russian]{babel}
 
 \usepackage{tempora} 
+\usepackage{fvextra} % Расширение для Verbatim с поддержкой переносов
 
 \usepackage[left=30mm,right=15mm,top=20mm,bottom=20mm]{geometry}
 
@@ -206,23 +207,94 @@
 
 Backend часть приложения была реализована на фреймворке \code{Flask} с созданием основного файла \code{app.py}, который содержит все API и логику приложения. Центральным элементом стала функция \code{create\_app()}, которая настраивает приложение, подключает базу данных \code{MySQL} через \code{get\_db\_connection()} (Листинг 1) и инициализирует систему аутентификации. Для обработки пользовательских данных был разработан отдельный модуль \code{auth.py}, содержащий класс \code{AuthManager} с методами \code{register\_user()} для безопасной регистрации с хэшированием паролей через \code{hash\_password()} (Листинг 2) и \code{login\_user()} для аутентификации с генерацией токенов сессии через \code{generate\_session\_token()} (Листинг 3). Особое внимание было уделено безопасности данных через использование параметризованных запросов и хэширования \code{Argon2}.
 
-Для загрузки и обработки данных о лицензиях был создан модуль \code{load\_data\_local.py}, который реализует взаимодействие с API данных Правительства Москвы. Основная функция \code{load\_all\_data()} (Листинг 4) выполняет загрузку записей с автоматической обработкой пагинации, а функция \code{process\_company()} обеспечивает фильтрацию дубликатов по ИНН и адресу, сохраняя только актуальные версии записей. В процессе реализации была решена задача предобработки геоданных через \code{extract\_coordinates()} для извлечения координат из различных форматов JSON, что позволило корректно отображать предприятия на карте.
+Для загрузки и обработки данных о лицензиях был создан модуль \code{load\_data\_local.py}, который реализует взаимодействие с API данных Правительства Москвы с автоматическим еженедельным обновлением по расписанию. Основная функция \code{load\_all\_data()} (Листинг 4) выполняет загрузку записей с автоматической обработкой пагинации, а функция \code{process\_company()} обеспечивает фильтрацию дубликатов по ИНН и адресу, сохраняя только актуальные версии записей. В процессе реализации была решена задача предобработки геоданных через \code{extract\_coordinates()} для извлечения координат из различных форматов JSON, что позволило корректно отображать предприятия на карте.
 
-Frontend часть приложения была разработана с использованием \code{JavaScript} и библиотеки \code{Leaflet} для интерактивной карты. В файле \code{app.js} была реализована основная логика приложения, включая \code{initMap()} (Листинг 5) для создания карты с настраиваемыми слоями и элементами управления. Функция \code{loadCompanies()} обеспечивает динамическую загрузку предприятий с учетом масштаба карты и фильтров, автоматически адаптируя количество загружаемых точек для оптимизации производительности. Для визуализации данных была реализована система цветовой индикации статусов лицензий через \code{getColorByStatusColor()} и создание интерактивных маркеров с popup-окнами, содержащими детальную информацию о предприятиях.
+Frontend часть приложения была разработана с использованием \code{JavaScript} и библиотеки \code{Leaflet} для интерактивной карты. В файле \code{app.js} была реализована основная логика приложения, включая \code{initMap()} (Листинг 5) для создания карты с настраиваемыми слоями и элементами управления. Функция \code{loadCompanies()} (Листинг 6) обеспечивает динамическую загрузку предприятий с учетом масштаба карты и фильтров, автоматически адаптируя количество загружаемых точек для оптимизации производительности. Для визуализации данных была реализована система цветовой индикации статусов лицензий через \code{getColorByStatusColor()} и создание интерактивных маркеров с popup-окнами, содержащими детальную информацию о предприятиях.
 
-Система аутентификации на клиентской стороне была реализована в файле \code{auth.js} через класс \code{AuthManagerClient} с методами \code{handleLogin()} и \code{handleRegister()} (Листинг 6) для обработки форм входа и регистрации с клиентской валидацией. Особенностью реализации стало использование \code{localStorage} для хранения токенов сессии и автоматическая проверка их валидности при загрузке страницы через \code{validateSession()}. Для управления пользовательским интерфейсом были разработаны функции обновления состояния кнопок и счетчиков в зависимости от статуса авторизации.
+Система аутентификации на клиентской стороне была реализована в файле \code{auth.js} через класс \code{AuthManagerClient} с методами \code{handleLogin()} и \code{handleRegister()} (Листинг 7) для обработки форм входа и регистрации с клиентской валидацией. Особенностью реализации стало использование \code{localStorage} для хранения токенов сессии и автоматическая проверка их валидности при загрузке страницы через \code{validateSession()}. Для управления пользовательским интерфейсом были разработаны функции обновления состояния кнопок и счетчиков в зависимости от статуса авторизации.
 
-Визуальная часть приложения была создана с использованием CSS-фреймворка \code{Bootstrap} и кастомных стилей. Файл \code{styles.css} (Листинг 7) определяет общую цветовую схему приложения с зелеными акцентами, стили для карты, маркеров и popup-окон, а также обеспечивает адаптивность дизайна для мобильных устройств. Дополнительный файл \code{auth-styles.css} содержит стили для модальных окон аутентификации с градиентными заголовками и кастомными элементами форм.
+Визуальная часть приложения была создана с использованием CSS-фреймворка \code{Bootstrap} и кастомных стилей. Файл \code{styles.css} определяет общую цветовую схему приложения с зелеными акцентами, стили для карты, маркеров и popup-окон, а также обеспечивает адаптивность дизайна для мобильных устройств. Дополнительный файл \code{auth-styles.css} содержит стили для модальных окон аутентификации с градиентными заголовками и кастомными элементами форм.
 
 В процессе реализации были решены задачи интеграции всех модулей в единую систему. Backend API обеспечивает обработку запросов на получение данных о компаниях через \code{get\_companies()} (Листинг 8) с поддержкой фильтрации по статусу лицензии, административному округу, району и типу лицензии. Для работы с избранными предприятиями были созданы соответствующие эндпоинты, использующие \code{validate\_session()} из \code{AuthManager} для проверки авторизации перед выполнением операций. На frontend была реализована функция \code{toggleFavorite()} (Листинг 9) для добавления и удаления предприятий из избранного с обновлением интерфейса в реальном времени.
 
 Особое внимание было уделено оптимизации производительности через реализацию динамической загрузки данных в зависимости от масштаба карты, кэширования результатов поиска и использования асинхронных запросов. Для анализа данных была реализована функция \code{findSimilarCompanies()} (Листинг 10) для поиска предприятий с аналогичными типами лицензий в заданном радиусе, а также интеграция с \code{k-means} кластеризацией для выявления зон концентрации просроченных лицензий.
 
-\section{Основные сценарии использования приложения}
+\section{Основные сценарии работы приложения}
+
+Пользователь открывает сайт и видит интерактивную карту Москвы с маркерами предприятий (рисунок \ref{fig:main_map}). Для работы с данными он использует панель фильтров, позволяющую отобрать организации по статусу лицензии, например, выбрать только просроченные (рисунок \ref{fig:filters}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{main_map.png} 
+    \caption{Интерактивная карта Москвы с маркерами предприятий}
+    \label{fig:main_map}
+    \vspace{0.3cm} % Небольшой отступ между фото
+    \includegraphics[width=0.6\textwidth]{filters_expired.png} 
+    \caption{Фильтрация предприятий по статусу лицензии}
+    \label{fig:filters}
+\end{figure}
+
+При клике на маркер открывается детальное информационное окно с данными о предприятии (рисунок \ref{fig:detail_view}). Для нахождения предприятий с похожим типом лицензии в радиусе 1000 метров используется функция «Поиск похожих» (рисунок \ref{fig:similar}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{popup_info.png} 
+    \caption{Детальное окно с данными о предприятии}
+    \label{fig:detail_view}
+    \vspace{0.3cm}
+    \includegraphics[width=0.6\textwidth]{similar_search.png} 
+    \caption{Результат функции «Поиск похожих»}
+    \label{fig:similar}
+\end{figure}
+
+Пользователь регистрируется в системе (рисунок \ref{fig:register}) и совершает вход в созданный аккаунт (рисунок \ref{fig:login}). 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.55\textwidth]{auth_register.png} 
+    \caption{Процесс регистрации пользователя}
+    \label{fig:register}
+    \vspace{0.3cm}
+    \includegraphics[width=0.55\textwidth]{auth_login.png} 
+    \caption{Форма входа в аккаунт}
+    \label{fig:login}
+\end{figure}
+
+Пользователь находит предприятия через карту и добавляет их в избранное (рисунок \ref{fig:add_fav}). Список сохраненных организаций доступен в модальном окне «Избранные» (рисунок \ref{fig:fav_list}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{add_to_favorites.png} 
+    \caption{Добавление предприятия в избранное}
+    \label{fig:add_fav}
+    \vspace{0.3cm}
+    \includegraphics[width=0.6\textwidth]{favorites_modal.png} 
+    \caption{Список избранных предприятий}
+    \label{fig:fav_list}
+\end{figure}
+
+Для выявления проблемных районов, а именно зон концентрации предприятий с неактивной лицензией, используется алгоритм \code{k-means} кластеризации, визуализирующий зоны на карте. Пользователь в меню фильтров вводит количество зон, на которые нужно распределить точки и нажимает "Показать зоны".  (рисунок \ref{fig:kmeans}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{kmeans_clusters.png} 
+    \caption{Анализ концентрации просроченных лицензий}
+    \label{fig:kmeans}
+\end{figure}
 
 \section*{Заключение}
 
-\newpage
+В ходе выполнения курсового проекта было разработано веб-приложение для визуального мониторинга и аналитики статуса алкогольных лицензий предприятий города Москвы. Система реализована на базе фреймворка \code{Flask} (Python) и СУБД \code{MySQL} с использованием библиотеки \code{Leaflet.js} для картографической визуализации.
+
+Разработанное решение позволило успешно трансформировать «сырые» открытые данные Правительства Москвы в интерактивный инструмент мониторинга. Ключевыми достижениями проекта стали реализация системы динамической фильтрации, модуля аутентификации с использованием современного хэширования \code{Argon2}, а также интеграция аналитического алгоритма \code{k-means} кластеризации для выявления зон концентрации просроченных лицензий.
+К достоинствам системы можно отнести высокую наглядность представления данных, наличие инструментов пространственного анализа (поиск объектов в радиусе 1000 метров), оптимизацию производительности за счет динамической загрузки маркеров и адаптивный интерфейс, реализованный с помощью \code{Bootstrap}.
+
+Вместе с тем, среди недостатков стоит отметить, что в текущей версии не реализовано автоматизированное тестирование кода, а аналитический функционал ограничен только алгоритмом кластеризации и поиском похожих предприятий.
+
+В перспективе проект может быть расширен за счёт внедрения инструментов более глубокой аналитики, например предсказание вероятности отзыва лицензии, интеграции с дополнительными наборами данных, например реестром жалоб граждан, а также разработки полноценного мобильного приложения.
+
+Исходный код проекта и история изменений доступны в репозиторий: [https://github.com/RomanLin2006/MyWebApp].
+
 \section*{Список литературы и интернет-ресурсов}
 Реестр лицензий на розничную продажу алкогольной продукции // Портал открытых данных Правительства Москвы. — URL: https://data.mos.ru/opendata/7710152113-reestr-litsenziy-na-roznichnuyu-prodaju-alkogolnoy-produktsii (дата обращения: 18.01.2026).
 
@@ -251,11 +323,779 @@ def get_db_connection():
         return None
 \end{Verbatim}
 
+Листинг 2 — функции \code{register\_user()} и \code{hash\_password()}
+\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm, breaklines=true, breakindent=2em]
+def register_user(self, email: str, password: str, 
+                  first_name: str = None, last_name: str = None, 
+                  phone: str = None, privacy_policy_accepted: bool = False,
+                  data_processing_consent: bool = False,
+                  ip_address: str = None, user_agent: str = None) -> Dict[str, Any]:
+    if not self.validate_email(email):
+        return {"success": False, "message": "Некорректный email адрес"}
+    
+    password_valid, password_message = self.validate_password(password)
+    if not password_valid:
+        return {"success": False, "message": password_message}
+        
+    if not privacy_policy_accepted:
+        return {"success": False, "message": "Примите политику конфиденциальности"}
+        
+    if not data_processing_consent:
+        return {"success": False, "message": "Дайте согласие на обработку данных"}
+        
+    try:
+        connection = self.get_db_connection()
+        cursor = connection.cursor()
+        check_query = "SELECT id FROM users WHERE email = %s"
+        cursor.execute(check_query, (email,))
+            
+        if cursor.fetchone():
+            self.log_auth_action(email, "register_failed", ip_address, 
+                                 user_agent, "Email уже существует")
+            return {"success": False, "message": "Email уже занят"}
+            
+        password_hash = self.hash_password(password)
+            
+        insert_query = """
+        INSERT INTO users (email, password_hash, first_name, last_name, 
+        phone, privacy_policy_accepted, data_processing_consent)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+            
+        cursor.execute(insert_query, (
+            email.lower(), password_hash, first_name, last_name, phone,
+            privacy_policy_accepted, data_processing_consent
+        ))
+        user_id = cursor.lastrowid
+        connection.commit()  
+        self.log_auth_action(email, "register_success", ip_address, 
+                             user_agent, f"User ID: {user_id}")
+            
+        return {"success": True, "message": "Успешно", "user_id": user_id}
+    except Error as e:
+        self.logger.error(f"Ошибка регистрации: {e}")
+        return {"success": False, "message": "Ошибка БД"}
+    finally:
+        if 'connection' in locals() and connection.is_connected():
+            cursor.close()
+            connection.close()
 
+def hash_password(self, password: str) -> str:
+    import hashlib
+    return hashlib.sha256(password.encode()).hexdigest
 
+def hash_password(self, password: str) -> str:
+        return ph.hash(password)
+\end{Verbatim}
 
+Листинг 3 — функции \code{login\_user()} и \code{ generate\_session\_token(()}
 
+\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+def login_user(self, email: str, password: str, ip_address: str = None, 
+                  user_agent: str = None) -> Dict[str, Any]:
+        
+        if not self.validate_email(email):
+            return {"success": False, "message": "Некорректный email адрес"}
+        
+        try:
+            connection = self.get_db_connection()
+            cursor = connection.cursor(dictionary=True)
+            
+            self.log_auth_action(email, "login_attempt", ip_address, user_agent)
+            query = """
+            SELECT id, email, password_hash, first_name, last_name, is_active, 
+                   email_verified, last_login
+            FROM users 
+            WHERE email = %s AND is_active = TRUE
+            """
+            
+            cursor.execute(query, (email.lower(),))
+            user = cursor.fetchone()
+            
+            if not user:
+                self.log_auth_action(email, "login_failed", ip_address, user_agent, "User not found")
+                return {"success": False, "message": "Неверный email или пароль"}
 
+            if not self.verify_password(password, user['password_hash']):
+                self.log_auth_action(email, "login_failed", ip_address, user_agent, "Invalid password")
+                return {"success": False, "message": "Неверный email или пароль"}
+ 
+            session_token = self.generate_session_token()
+            expires_at = datetime.now() + timedelta(days=7)  # Сессия на 7 дней
 
+            session_query = """
+            INSERT INTO user_sessions (user_id, session_token, expires_at, ip_address, user_agent)
+            VALUES (%s, %s, %s, %s, %s)
+            """
+            
+            cursor.execute(session_query, (
+                user['id'], session_token, expires_at, ip_address, user_agent
+            ))
 
+            update_query = "UPDATE users SET last_login = NOW() WHERE id = %s"
+            cursor.execute(update_query, (user['id'],))
+            connection.commit()
+            self.log_auth_action(email, "login_success", ip_address, user_agent, f"Session: {session_token[:10]}...")
+            
+            return {
+                "success": True,
+                "message": "Вход выполнен успешно",
+                "session_token": session_token,
+                "user": {
+                    "id": user['id'],
+                    "email": user['email'],
+                    "first_name": user['first_name'],
+                    "last_name": user['last_name'],
+                    "email_verified": user['email_verified']
+                }
+            }
+        except Error as e:
+            self.logger.error(f"Ошибка входа: {e}")
+            self.log_auth_action(email, "login_failed", ip_address, user_agent, f"DB Error: {str(e)}")
+            return {"success": False, "message": "Ошибка при входе"}
+        finally:
+            if 'connection' in locals() and connection.is_connected():
+                cursor.close()
+                connection.close()
+                
+def generate_session_token(self) -> str:
+        return secrets.token_urlsafe(32)
+\end{Verbatim}
+
+Листинг 4 — функция \code{load\_all\_data()}
+\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+def load_all_data():
+    print("=" * 60)
+    print("ЗАГРУЗКА ДАННЫХ ИЗ API В БАЗУ ДАННЫХ (ЛОКАЛЬНО)")
+    print("=" * 60)
+
+    connection = get_db_connection()
+    if not connection:
+        print("Не удалось подключиться к БД!")
+        return
+
+    cursor = connection.cursor()
+
+    print("\n1. Получение количества записей...")
+    try:
+        url = f"{API_BASE_URL}/datasets/{DATASET_ID}/count?api_key={API_KEY}"
+        session = requests.Session()
+        session.trust_env = False
+        response = session.get(
+            url,
+            timeout=60,
+            verify=False,
+            proxies={"http": None, "https": None},
+        )
+        if response.status_code == 200:
+            total_count = int(response.text.strip('"'))
+            print(f"   ✓ Всего записей в датасете: {total_count}")
+        else:
+            print(f"   ⚠ Не удалось получить количество, продолжаем...")
+            total_count = None
+    except Exception as e:
+        print(f"   ⚠ Ошибка: {e}")
+        total_count = None
+
+    print("\n2. Загрузка данных...")
+    skip = 0
+    loaded = 0
+    errors = 0
+    start_time = time.time()
+
+    while True:
+        print(f"\n   Загрузка записей {skip} - {skip + BATCH_SIZE}...")
+
+        data = fetch_data_from_api(skip, BATCH_SIZE)
+
+        if not data or len(data) == 0:
+            print("   Нет данных, завершение загрузки.")
+            break
+
+        batch_loaded = 0
+        for record in data:
+            if process_company(cursor, record):
+                batch_loaded += 1
+                loaded += 1
+            else:
+                errors += 1
+        connection.commit()
+
+        print(f"   ✓ Загружено: {batch_loaded} записей (всего: {loaded})")
+
+        if len(data) < BATCH_SIZE:
+            print("   Достигнут конец данных.")
+            break
+
+        skip += BATCH_SIZE
+        time.sleep(0.3)  
+    elapsed_time = time.time() - start_time
+
+    print("\n" + "=" * 60)
+    print("ЗАГРУЗКА ЗАВЕРШЕНА")
+    print("=" * 60)
+    print(f"Загружено записей: {loaded}")
+    print(f"Ошибок: {errors}")
+    print(f"Время выполнения: {elapsed_time:.2f} секунд")
+
+    if total_count:
+        print(f"Ожидалось записей: {total_count}")
+        if loaded < total_count:
+            print("⚠ Загружено меньше, чем ожидалось. Возможно, некоторые записи пропущены.")
+    cursor.close()
+    connection.close()
+    print("\n✓ Готово!")
+\end{Verbatim}
+
+Листинг 5 — функция \code{initMap()}
+\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+function initMap() {
+  map = L.map("map").setView([55.75, 37.62], 10);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 18,
+  }).addTo(map);
+
+  markersLayer = L.layerGroup().addTo(map);
+
+  L.control.scale({
+    position: 'bottomleft',
+    metric: true,
+    imperial: false,
+    updateWhenIdle: true
+  }).addTo(map);
+
+  const scaleIndicator = document.createElement('div');
+  scaleIndicator.style.cssText = `
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 8px 12px;
+    z-index: 1000;
+    font-size: 12px;
+    font-weight: 500;
+  `;
+  scaleIndicator.id = 'scaleIndicator';
+  document.body.appendChild(scaleIndicator);
+
+  map.on('zoomend', function() {
+    const zoom = map.getZoom();
+    let meters = '';
+    if (zoom <= 8) meters = '~1000 м';
+    else if (zoom <= 10) meters = '~500 м';
+    else if (zoom <= 12) meters = '~200 м';
+    else if (zoom <= 14) meters = '~100 м';
+    else if (zoom <= 16) meters = '~50 м';
+    else meters = '~10 м';
+    scaleIndicator.innerHTML = `Масштаб: ${zoom} | ${meters}`;
+
+    if (!isSimilarMode && !isPopupOpen) {
+      clearTimeout(window.mapMoveTimeout);
+      window.mapMoveTimeout = setTimeout(() => {
+        loadCompanies();
+      }, 2000); // 2 секунды вместо 500мс
+    }
+  });
+  scaleIndicator.innerHTML = 'Масштаб: 10 | ~500 м';
+}
+\end{Verbatim}
+
+Листинг 6 — функция \code{loadCompanies()}
+\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+async function loadCompanies() {
+  if (isSimilarMode) {
+    return;
+  }
+  const params = new URLSearchParams();
+
+  const zoom = map.getZoom();
+  const bounds = map.getBounds();
+  if (zoom >= 16) {
+
+    params.set("load_all", "true");
+    params.set("bounds", `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`);
+    params.set("zoom_level", zoom);
+  } else if (zoom >= 12) {
+    params.set("limit", "1000");
+  } else {
+    params.set("limit", "500");
+  }
+  const statusColor = document.getElementById("statusFilter").value;
+  if (statusColor) params.set("status_color", statusColor);
+
+  const admArea = document.getElementById("admAreaFilter").value;
+  if (admArea) params.set("adm_area", admArea);
+
+  const district = document.getElementById("districtFilter").value;
+  if (district) params.set("district", district);
+
+  const licenseType = document.getElementById("licenseTypeFilter").value;
+  if (licenseType) params.set("license_type", licenseType);
+
+  const search = document.getElementById("searchInput").value.trim();
+  if (search) params.set("search", search);
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/companies?${params.toString()}`);
+    
+    if (!resp.ok) {
+      throw new Error(`HTTP error! status: ${resp.status}`);
+    }
+    const data = await resp.json();
+    if (!Array.isArray(data)) {
+      console.error('Invalid data format:', data);
+      alert('Ошибка: получены данные в неверном формате');
+      return;
+    }
+    allCompaniesData = data;
+    markersLayer.clearLayers();
+    let count = 0;
+    data.forEach((c) => {
+      if (c.latitude == null || c.longitude == null) return;
+      const color = getColorByStatusColor(c.license_status_color);
+      const markerClass = getMarkerClass(c.license_status_color);
+      const marker = L.circleMarker([c.latitude, c.longitude], {
+        radius: 8,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.85,
+        weight: 2.5,
+        className: markerClass,
+      });
+      const popupHtml = `
+        <div class="popup-content">
+          <strong>${c.object_name || "Без названия"}</strong>
+          <hr/>
+          <div class="popup-details">
+            <div><strong>Адрес:</strong> ${c.address || "-"}</div>
+            <div><strong>Округ:</strong> ${c.adm_area || "-"}</div>
+            <div><strong>Район:</strong> ${c.district || "-"}</div>
+            <div><strong>Тип работ:</strong> ${c.license_type_name || "-"} (${c.license_type_code || "-"})</div>
+            <div><strong>Лицензия:</strong> ${c.license_number || "-"}</div>
+            <div><strong>Действует:</strong> ${c.license_begin || "-"} - ${c.license_expire || "-"}</div>
+            <div><strong>Статус:</strong> ${c.license_status || "-"}</div>
+            ${c.inn ? `<div><strong>ИНН:</strong> ${c.inn}</div>` : ""}
+          </div>
+          <hr/>
+          <div class="popup-actions">
+            <button class="btn-sm btn-warning" id="favoriteBtn-${c.id}" onclick="toggleFavorite(${c.id})">
+              <i class="bi bi-star" id="favoriteIcon-${c.id}"></i> 
+              <span id="favoriteText-${c.id}">Добавить в избранное</span>
+            </button>
+            <button class="btn-sm btn-primary" onclick="findSimilarCompanies(${c.latitude}, ${c.longitude}, '${c.license_type_code}', '${c.inn || ''}')">
+              �� Поиск похожих (1000м)
+            </button>
+          </div>
+        </div>
+      `;
+    
+      marker.bindPopup(popupHtml, {
+        className: "custom-popup",
+        maxWidth: 420,
+        autoClose: false,
+        closeOnClick: false,
+        closeOnEscapeKey: false
+      });
+
+      marker.on("popupopen", function() {
+        isPopupOpen = true;
+      });
+      
+      marker.on("popupclose", function() {
+        isPopupOpen = false;
+      });
+
+      marker._companyData = c;
+      const originalRadius = 8;
+      const hoveredRadius = 11;
+
+      marker.on("mouseover", function (e) {
+        marker.setRadius(hoveredRadius);
+        marker.setStyle({
+          fillColor: getHoverColor(c.license_status_color),
+          color: getHoverStroke(c.license_status_color),
+          weight: 3,
+        });
+        if (marker._path) {
+          marker._path.classList.add("hovered");
+        }
+      });
+
+      marker.on("mouseout", function (e) {
+        marker.setRadius(originalRadius);
+        marker.setStyle({
+          fillColor: color,
+          color: color,
+          weight: 2.5,
+        });
+        if (marker._path) {
+          marker._path.classList.remove("hovered");
+        }
+      });
+
+      marker.on("click", function (e) {
+        marker.openPopup();
+      });
+      marker.addTo(markersLayer);
+      count++;
+    });
+
+    let countText = `${count} точек`;
+    if (zoom >= 16) {
+      countText += " (все в области)";
+    } else if (zoom >= 12) {
+      countText += " (лимит 1000)";
+    } else {
+      countText += " (лимит 500)";
+    }
+    document.getElementById("pointsCount").textContent = countText;
+    updateFavoriteButtonsState();
+  } catch (e) {
+    console.error(e);
+    alert("Ошибка при загрузке данных с backend. Проверь, что Flask запущен.");
+  }
+}
+\end{Verbatim}
+Листинг 7 — функции \code{handleLogin()} и \code{handleRegister()}
+\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+async handleLogin(event) {
+        event.preventDefault();
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        if (!email || !password) {
+            this.showNotification('Пожалуйста, заполните все поля', 'error');
+            return;
+        }
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await response.json();
+            if (data.success) {
+                this.sessionToken = data.session_token;
+                this.currentUser = data.user;
+                
+                localStorage.setItem('sessionToken', this.sessionToken);
+                localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+            
+                this.updateUI();
+                this.hideLoginModal();
+                this.showNotification('Вход выполнен успешно!', 'success');
+                
+                document.getElementById('loginForm').reset();
+            } else {
+                this.showNotification(data.message || 'Ошибка входа', 'error');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            this.showNotification('Ошибка соединения с сервером', 'error');
+        }
+    }
+    
+    async handleRegister(event) {
+        event.preventDefault();
+        
+        const formData = {
+            email: document.getElementById('registerEmail').value,
+            password: document.getElementById('registerPassword').value,
+            password_confirm: document.getElementById('registerPasswordConfirm').value,
+            first_name: document.getElementById('registerFirstName').value,
+            last_name: document.getElementById('registerLastName').value,
+            phone: document.getElementById('registerPhone').value,
+            privacy_policy_accepted: document.getElementById('privacyPolicy').checked,
+            data_processing_consent: document.getElementById('dataProcessingConsent').checked
+        };
+
+        if (!this.validateRegisterForm(formData)) {
+            return;
+        }
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+            const data = await response.json();
+            if (data.success) {
+                this.hideRegisterModal();
+                this.showNotification('Регистрация успешна! Теперь вы можете войти.', 'success');
+                
+                document.getElementById('registerForm').reset();
+
+                setTimeout(() => this.showLoginModal(), 1500);
+            } else {
+                this.showNotification(data.message || 'Ошибка регистрации', 'error');
+            }
+        } catch (error) {
+            console.error('Register error:', error);
+            this.showNotification('Ошибка соединения с сервером', 'error');
+        }
+    }
+\end{Verbatim}
+
+Листинг 8 — функция \code{get_companies()}
+\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+def get_companies():
+        limit = min(int(request.args.get("limit", 200)), 1000)
+        load_all = request.args.get("load_all", "false").lower() == "true"
+        bounds = request.args.get("bounds")
+        zoom_level = request.args.get("zoom_level")
+        status_color = request.args.get("status_color")
+        adm_area = request.args.get("adm_area")
+        district = request.args.get("district")
+        license_type = request.args.get("license_type")
+        search = request.args.get("search")
+
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({"error": "DB connection failed"}), 500
+        cursor = conn.cursor(dictionary=True)
+
+        try:
+            base_sql = """
+                SELECT 
+                    c.id,
+                    c.object_name,
+                    c.address,
+                    aa.name as adm_area,
+                    d.name as district,
+                    lt.code as license_type_code,
+                    lt.name as license_type_name,
+                    c.license_number,
+                    c.license_begin,
+                    c.license_expire,
+                    ls.status as license_status,
+                    CASE 
+                        WHEN c.license_expire IS NULL THEN 'expired'
+                        WHEN c.license_expire < CURDATE() THEN 'expired'
+                        WHEN c.license_expire <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 'expiring_soon'
+                        ELSE 'active'
+                    END as license_status_color,
+                    c.longitude,
+                    c.latitude,
+                    c.inn,
+                    c.kpp,
+                    c.subject_name
+                FROM companies c
+                LEFT JOIN adm_areas aa ON c.adm_area_id = aa.id
+                LEFT JOIN districts d ON c.district_id = d.id
+                LEFT JOIN license_types lt ON c.license_type_id = lt.id
+                LEFT JOIN license_statuses ls ON c.license_status_id = ls.id
+                WHERE c.longitude IS NOT NULL
+                AND c.latitude IS NOT NULL
+            """
+            
+            conditions = []
+            params = []
+
+            if load_all and bounds:
+                try:
+                    south, west, north, east = map(float, bounds.split(','))
+                    conditions.append("""
+                        c.latitude BETWEEN %s AND %s
+                        AND c.longitude BETWEEN %s AND %s
+                    """)
+                    params.extend([south, north, west, east])
+                except (ValueError, IndexError):
+                    print(f"Неверный формат bounds: {bounds}")
+            
+            if status_color:
+                conditions.append("""
+                    CASE 
+                        WHEN c.license_expire IS NULL THEN 'expired'
+                        WHEN c.license_expire < CURDATE() THEN 'expired'
+                        WHEN c.license_expire <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 'expiring_soon'
+                        ELSE 'active'
+                    END = %s
+                """)
+                params.append(status_color)
+            
+            if adm_area:
+                conditions.append("aa.name = %s")
+                params.append(adm_area)
+            
+            if district:
+                conditions.append("d.name = %s")
+                params.append(district)
+            
+            if license_type:
+                conditions.append("lt.code = %s")
+                params.append(license_type)
+            
+            if search:
+                conditions.append("""
+                    (c.object_name LIKE %s 
+                    OR c.address LIKE %s 
+                    OR c.subject_name LIKE %s
+                    OR c.inn LIKE %s)
+                """)
+                search_term = f"%{search}%"
+                params.extend([search_term, search_term, search_term, search_term])
+
+            if conditions:
+                base_sql += " AND " + " AND ".join(conditions)
+  
+            base_sql += " ORDER BY c.id"
+
+            if not load_all:
+                base_sql += " LIMIT %s"
+                params.append(limit)
+            
+            cursor.execute(base_sql, params)
+            rows = cursor.fetchall()
+            
+        except Error as e:
+            conn.close()
+            print(f"Ошибка SQL при получении компаний: {e}")
+            return jsonify({"error": str(e)}), 500
+        except Exception as e:
+            conn.close()
+            print(f"Неожиданная ошибка при получении компаний: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
+
+        conn.close()
+        return jsonify(rows)
+\end{Verbatim}
+Листинг 9 — функция \code{toggleFavorite()}
+\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+async function toggleFavorite(companyId) {
+  const token = localStorage.getItem('sessionToken');
+  if (!token) {
+    showNotification('Для добавления в избранное необходимо войти в систему', 'warning');
+    return;
+  }
+  try {
+    const checkResponse = await fetch(`${API_BASE}/api/favorites/check/${companyId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    const checkData = await checkResponse.json();
+    
+    if (checkData.is_favorite) {
+      // Удаляем из избранного
+      const deleteResponse = await fetch(`${API_BASE}/api/favorites/${companyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (deleteResponse.ok) {
+        updateFavoriteButton(companyId, false);
+        showNotification('Предприятие удалено из избранного', 'success');
+        updateFavoritesCount();
+      } else {
+        showNotification('Ошибка при удалении из избранного', 'error');
+      }
+    } else {
+      const addResponse = await fetch(`${API_BASE}/api/favorites`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          company_id: companyId
+        })
+      });
+      
+      if (addResponse.ok) {
+        updateFavoriteButton(companyId, true);
+        showNotification('Предприятие добавлено в избранное', 'success');
+        updateFavoritesCount();
+      } else {
+        const errorData = await addResponse.json();
+        showNotification(errorData.error || 'Ошибка при добавлении в избранное', 'error');
+      }
+    }
+  } catch (error) {
+    console.error('Ошибка при работе с избранными:', error);
+    showNotification('Ошибка при работе с избранными', 'error');
+  }
+}
+\end{Verbatim}
+
+Листинг 10 — функция \code{findSimilarCompanies()}
+\begin{Verbatim}[fontsize=\fontsize{12pt}{14.4pt}\selectfont, xleftmargin=1.25cm]
+function findSimilarCompanies(lat, lon, licenseType, excludeInn) {
+  if (!isSimilarMode) {
+    originalMarkersData = [];
+    markersLayer.eachLayer(marker => {
+      originalMarkersData.push(marker);
+    });
+    isSimilarMode = true;
+  }
+  const similar = allCompaniesData.filter(company => {
+    if (company.latitude == null || company.longitude == null) return false;
+    if (company.inn === excludeInn) return false; 
+    if (company.license_type_code !== licenseType) return false; 
+    
+
+    const distance = Math.sqrt(
+      Math.pow(company.latitude - lat, 2) + 
+      Math.pow(company.longitude - lon, 2)
+    ) * 111000; // Примерно 111км на 1 градус
+    
+    return distance <= 1000; // 1000 метров
+  });
+
+  markersLayer.clearLayers();
+  
+  similar.forEach((c) => {
+    const color = getColorByStatusColor(c.license_status_color);
+    const markerClass = getMarkerClass(c.license_status_color);
+
+    const marker = L.circleMarker([c.latitude, c.longitude], {
+      radius: 10, /
+      color: color,
+      fillColor: color,
+      fillOpacity: 0.9,
+      weight: 3,
+      className: markerClass + ' similar-highlighted',
+    });
+
+    const popupHtml = `
+      <div class="popup-content">
+        <strong>${c.object_name || "Без названия"}</strong>
+        <hr/>
+        <div class="popup-details">
+          <div><strong>Адрес:</strong> ${c.address || "-"}</div>
+          <div><strong>Округ:</strong> ${c.adm_area || "-"}</div>
+          <div><strong>Район:</strong> ${c.district || "-"}</div>
+          <div><strong>Тип работ:</strong> ${c.license_type_name || "-"} (${c.license_type_code || "-"})</div>
+          <div><strong>Лицензия:</strong> ${c.license_number || "-"}</div>
+          <div><strong>Действует:</strong> ${c.license_begin || "-"} - ${c.license_expire || "-"}</div>
+          <div><strong>Статус:</strong> ${c.license_status || "-"}</div>
+          ${c.inn ? `<div><strong>ИНН:</strong> ${c.inn}</div>` : ""}
+        </div>
+      </div>
+    
+    marker.bindPopup(popupHtml, {
+      className: "custom-popup",
+      maxWidth: 420,
+      autoClose: false,
+      closeOnClick: false,
+      closeOnEscapeKey: false
+    });
+
+    marker.addTo(markersLayer);
+  });
+  showNotification(`Найдено ${similar.length} похожих предприятий в радиусе 1000м`);
+  document.getElementById("pointsCount").textContent = `${similar.length} точек (похожие)`;
+}
+\end{Verbatim}
 \end{document}

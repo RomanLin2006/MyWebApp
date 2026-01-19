@@ -1,3 +1,4 @@
+-- Процедура кластеризации предприятий с просроченной лицензией
 DELIMITER //
 CREATE PROCEDURE kmeans_expired_clustering(IN k INT) 
 BEGIN 
@@ -11,7 +12,7 @@ BEGIN
     FROM companies 
     WHERE latitude IS NOT NULL 
       AND longitude IS NOT NULL 
-      AND license_status_id IN (3, 4, 5); -- Просроченные лицензии
+      AND license_status_id IN (1, 3, 4, 5); -- Просроченные лицензии
     
     IF companies_count < k THEN
         SELECT CONCAT('Ошибка: доступно только ', companies_count, ' просроченных компаний с координатами, а нужно минимум ', k) as error;
@@ -43,7 +44,7 @@ BEGIN
             FROM companies 
             WHERE latitude IS NOT NULL 
               AND longitude IS NOT NULL 
-              AND license_status_id IN (3, 4, 5) -- Просроченные лицензии
+              AND license_status_id IN (1, 3, 4, 5) -- Просроченные лицензии
             ORDER BY RAND() 
             LIMIT k 
         ) as random_companies; 
@@ -77,7 +78,7 @@ BEGIN
             FROM companies c 
             WHERE c.latitude IS NOT NULL 
               AND c.longitude IS NOT NULL 
-              AND c.license_status_id IN (3, 4, 5); -- Просроченные лицензии
+              AND c.license_status_id IN (1, 3, 4, 5); -- Просроченные лицензии
          
             -- Сохранение предыдущих позиций центроидов
             UPDATE temp_centroids  
@@ -93,7 +94,7 @@ BEGIN
                     COUNT(*) as companies_count 
                 FROM temp_assignments a 
                 JOIN companies c ON a.company_id = c.id 
-                WHERE c.license_status_id IN (3, 4, 5) -- Просроченные лицензии
+                WHERE c.license_status_id IN (1, 3, 4, 5) -- Просроченные лицензии
                 GROUP BY a.cluster_id 
             ) new_cent ON cent.cluster_id = new_cent.cluster_id 
             SET cent.lat = new_cent.new_lat, 
@@ -110,14 +111,14 @@ BEGIN
                     SELECT latitude FROM companies  
                     WHERE latitude IS NOT NULL 
                       AND longitude IS NOT NULL 
-                      AND license_status_id IN (3, 4, 5) -- Просроченные лицензии
+                      AND license_status_id IN (1, 3, 4, 5) -- Просроченные лицензии
                     ORDER BY RAND() LIMIT 1 
                 ), 
                 cent.lon = ( 
                     SELECT longitude FROM companies  
                     WHERE latitude IS NOT NULL 
                       AND longitude IS NOT NULL 
-                      AND license_status_id IN (3, 4, 5) -- Просроченные лицензии
+                      AND license_status_id IN (1, 3, 4, 5) -- Просроченные лицензии
                     ORDER BY RAND() LIMIT 1 
                 ) 
             WHERE counts.cnt IS NULL OR counts.cnt = 0; 
@@ -136,13 +137,13 @@ BEGIN
         END WHILE; 
          
         -- Очистка предыдущих кластеров для просроченных
-        UPDATE companies SET cluster_id = NULL WHERE license_status_id IN (3, 4, 5);
+        UPDATE companies SET cluster_id = NULL WHERE license_status_id IN (1, 3, 4, 5);
 
         -- Применение новых кластеров только для просроченных
         UPDATE companies c 
         JOIN temp_assignments a ON c.id = a.company_id 
         SET c.cluster_id = a.cluster_id 
-        WHERE c.license_status_id IN (3, 4, 5);
+        WHERE c.license_status_id IN (1, 3, 4, 5);
          
         -- Возврат статистики по кластерам просроченных лицензий
         SELECT  
@@ -157,7 +158,7 @@ BEGIN
             CONCAT('Итераций выполнено: ', iteration, ' (только просроченные)') as info 
         FROM companies c 
         WHERE c.cluster_id IS NOT NULL 
-          AND c.license_status_id IN (3, 4, 5) -- Просроченные лицензии
+          AND c.license_status_id IN (1, 3, 4, 5) -- Просроченные лицензии
         GROUP BY c.cluster_id 
         ORDER BY c.cluster_id; 
          
